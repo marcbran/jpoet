@@ -1,4 +1,4 @@
-module github.com/marcbran/jsonnet-libs/jsonnet-test
+module github.com/marcbran/jsonnet-kit
 
 go 1.24
 

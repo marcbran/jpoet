@@ -1,22 +1,23 @@
-package internal
+package test
 
 import (
 	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/google/go-jsonnet"
+	"github.com/marcbran/jsonnet-kit/internal/jsonnext"
 	"io/fs"
 	"path/filepath"
 	"strings"
 )
 
-type TestRun struct {
-	Results     []TestResult `json:"results"`
-	PassedCount int          `json:"passedCount"`
-	TotalCount  int          `json:"totalCount"`
+type Run struct {
+	Results     []Result `json:"results"`
+	PassedCount int      `json:"passedCount"`
+	TotalCount  int      `json:"totalCount"`
 }
 
-type TestResult struct {
+type Result struct {
 	Name     string `json:"name"`
 	Expected any    `json:"expected"`
 	Actual   any    `json:"actual"`
@@ -26,7 +27,7 @@ type TestResult struct {
 //go:embed lib
 var lib embed.FS
 
-func TestDir(dirname string) error {
+func RunDir(dirname string) error {
 	return filepath.WalkDir(dirname, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -34,7 +35,7 @@ func TestDir(dirname string) error {
 		if !strings.HasSuffix(path, "_tests.libsonnet") {
 			return nil
 		}
-		err = TestFile(path)
+		err = RunFile(path)
 		if err != nil {
 			return err
 		}
@@ -42,11 +43,11 @@ func TestDir(dirname string) error {
 	})
 }
 
-func TestFile(filename string) error {
+func RunFile(filename string) error {
 	vm := jsonnet.MakeVM()
-	vm.Importer(CompoundImporter{
+	vm.Importer(jsonnext.CompoundImporter{
 		Importers: []jsonnet.Importer{
-			&FSImporter{fs: lib},
+			&jsonnext.FSImporter{Fs: lib},
 			&jsonnet.FileImporter{},
 		},
 	})
@@ -58,7 +59,7 @@ func TestFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	var run TestRun
+	var run Run
 	err = json.Unmarshal([]byte(res), &run)
 	if err != nil {
 		return err

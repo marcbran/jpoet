@@ -1,4 +1,4 @@
-package internal
+package jsonnext
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 type FSImporter struct {
-	fs      fs.FS
+	Fs      fs.FS
 	fsCache map[string]*fsCacheEntry
 }
 
@@ -33,7 +33,7 @@ func (importer *FSImporter) Import(importedFrom, importedPath string) (contents 
 		return cacheEntry.contents, absPath, nil
 	}
 
-	contentBytes, err := fs.ReadFile(importer.fs, absPath)
+	contentBytes, err := fs.ReadFile(importer.Fs, absPath)
 
 	if err != nil {
 		if !os.IsNotExist(err) {

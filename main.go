@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/marcbran/jsonnet-libs/jsonnet-test/cmd"
+	"github.com/marcbran/jsonnet-kit/cmd"
 )
 
 func main() {
