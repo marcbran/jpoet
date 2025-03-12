@@ -3,6 +3,7 @@ package test
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/go-jsonnet"
 	"github.com/marcbran/jsonnet-kit/internal/jsonnext"
@@ -17,6 +18,14 @@ type Run struct {
 	TotalCount  int      `json:"totalCount"`
 }
 
+func (r Run) append(o Run) Run {
+	return Run{
+		Results:     append(r.Results, o.Results...),
+		PassedCount: r.PassedCount + o.PassedCount,
+		TotalCount:  r.TotalCount + o.TotalCount,
+	}
+}
+
 type Result struct {
 	Name     string `json:"name"`
 	Expected any    `json:"expected"`
@@ -27,23 +36,40 @@ type Result struct {
 //go:embed lib
 var lib embed.FS
 
-func RunDir(dirname string) error {
-	return filepath.WalkDir(dirname, func(path string, d fs.DirEntry, err error) error {
+func RunDir(dirname string) (*Run, error) {
+	var run Run
+	var runErr error
+	err := filepath.WalkDir(dirname, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if !strings.HasSuffix(path, "_tests.libsonnet") {
 			return nil
 		}
-		err = RunFile(path)
+		r, err := RunFile(path)
 		if err != nil {
-			return err
+			runErr = err
+			fmt.Println()
+			fmt.Println(err.Error())
+			return nil
+		}
+		if r != nil {
+			run = run.append(*r)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	if runErr != nil {
+		return nil, errors.New("encountered at least one error while running tests")
+	}
+	return &run, nil
 }
 
-func RunFile(filename string) error {
+func RunFile(filename string) (*Run, error) {
+	fmt.Printf("  File: %s\n", filename)
+
 	vm := jsonnet.MakeVM()
 	vm.Importer(jsonnext.CompoundImporter{
 		Importers: []jsonnet.Importer{
@@ -57,14 +83,13 @@ func RunFile(filename string) error {
 		lib.runTests(tests)
 	`, filename))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var run Run
 	err = json.Unmarshal([]byte(res), &run)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Printf("  File: %s\n", filename)
 	if run.PassedCount < run.TotalCount {
 		fmt.Println()
 	}
@@ -78,5 +103,5 @@ func RunFile(filename string) error {
 	}
 	fmt.Printf("Passed: %d/%d\n", run.PassedCount, run.TotalCount)
 	fmt.Println()
-	return nil
+	return &run, nil
 }
