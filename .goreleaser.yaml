@@ -28,6 +28,10 @@ archives:
       - goos: windows
         formats: [zip]
 
+dockers:
+  - image_templates:
+      - ghcr.io/marcbran/jsonnet-kit
+
 changelog:
   sort: asc
   filters:
