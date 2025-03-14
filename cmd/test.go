@@ -10,11 +10,14 @@ var testCmd = &cobra.Command{
 	Use:   "test [flags] directory",
 	Short: "Jsonnet test is a simple tool to run tests for Jsonnet files",
 	Long:  ``,
-	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true
-		run, err := test.RunDir(args[0])
+		dirname := "."
+		if len(args) > 0 {
+			dirname = args[0]
+		}
+		run, err := test.RunDir(dirname)
 		if err != nil {
 			return err
 		}

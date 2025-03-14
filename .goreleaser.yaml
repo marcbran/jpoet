@@ -30,9 +30,9 @@ archives:
 
 dockers:
   - image_templates:
-      - "ghcr.io/marcbran/jsonnet-kit:{{ .Tag }}"
       - "ghcr.io/marcbran/jsonnet-kit:v{{ .Major }}"
       - "ghcr.io/marcbran/jsonnet-kit:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/marcbran/jsonnet-kit:{{ .Tag }}"
       - "ghcr.io/marcbran/jsonnet-kit:latest"
 
 changelog:
