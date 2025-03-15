@@ -1,0 +1,7 @@
+set fallback := true
+
+default:
+    @just --list
+
+release:
+    @just jsonnet-release jsonnet-manifest
