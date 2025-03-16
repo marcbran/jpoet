@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-jsonnet"
 	"github.com/marcbran/jsonnet-kit/internal/jsonnext"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -18,9 +19,18 @@ type Run struct {
 	TotalCount  int      `json:"totalCount"`
 }
 
-func (r Run) append(o Run) Run {
+func (r Run) append(prefix string, o Run) Run {
+	var other []Result
+	for _, result := range o.Results {
+		other = append(other, Result{
+			Name:     fmt.Sprintf("%s%s", prefix, result.Name),
+			Expected: result.Expected,
+			Actual:   result.Actual,
+			Equal:    result.Equal,
+		})
+	}
 	return Run{
-		Results:     append(r.Results, o.Results...),
+		Results:     append(r.Results, other...),
 		PassedCount: r.PassedCount + o.PassedCount,
 		TotalCount:  r.TotalCount + o.TotalCount,
 	}
@@ -49,12 +59,14 @@ func RunDir(dirname string) (*Run, error) {
 		r, err := RunFile(path)
 		if err != nil {
 			runErr = err
-			fmt.Println()
-			fmt.Println(err.Error())
+			_, err := os.Stderr.WriteString(err.Error())
+			if err != nil {
+				return err
+			}
 			return nil
 		}
 		if r != nil {
-			run = run.append(*r)
+			run = run.append(path, *r)
 		}
 		return nil
 	})
@@ -68,8 +80,6 @@ func RunDir(dirname string) (*Run, error) {
 }
 
 func RunFile(filename string) (*Run, error) {
-	fmt.Printf("  File: %s\n", filename)
-
 	vm := jsonnet.MakeVM()
 	vm.Importer(jsonnext.CompoundImporter{
 		Importers: []jsonnet.Importer{
@@ -90,18 +100,5 @@ func RunFile(filename string) (*Run, error) {
 	if err != nil {
 		return nil, err
 	}
-	if run.PassedCount < run.TotalCount {
-		fmt.Println()
-	}
-	for _, result := range run.Results {
-		if !result.Equal {
-			fmt.Printf("      Name: %s\n", result.Name)
-			fmt.Printf("    Actual: %s\n", result.Actual)
-			fmt.Printf("  Expected: %s\n", result.Expected)
-			fmt.Println()
-		}
-	}
-	fmt.Printf("Passed: %d/%d\n", run.PassedCount, run.TotalCount)
-	fmt.Println()
 	return &run, nil
 }
