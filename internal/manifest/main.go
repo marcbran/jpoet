@@ -15,6 +15,7 @@ var lib embed.FS
 
 func RunDir(dirname string, jpath []string) error {
 	vm := jsonnet.MakeVM()
+	vm.MaxStack = 1000000
 	vm.Importer(jsonnext.CompoundImporter{
 		Importers: []jsonnet.Importer{
 			&jsonnext.FSImporter{Fs: lib},
