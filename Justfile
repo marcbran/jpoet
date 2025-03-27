@@ -2,11 +2,14 @@
 default:
     @just --list
 
-build:
+build: test
 	go build -v ./...
 
 install: build
 	go install -v ./...
+
+test:
+    go test -v -cover -timeout=120s -parallel=10 ./...
 
 [no-cd]
 jsonnet-release branch path="" source=".":
