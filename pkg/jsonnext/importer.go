@@ -61,10 +61,10 @@ type CompoundImporter struct {
 func (c CompoundImporter) Import(importedFrom, importedPath string) (contents jsonnet.Contents, foundAt string, err error) {
 	for _, importer := range c.Importers {
 		contents, foundAt, err = importer.Import(importedFrom, importedPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
+		if err == nil {
+			return contents, foundAt, err
+		}
+		if !os.IsNotExist(err) {
 			break
 		}
 	}

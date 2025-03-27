@@ -90,6 +90,27 @@ func TestCompoundImporter_ImportSuccess(t *testing.T) {
 	}
 }
 
+func TestCompoundImporter_StopsOnSuccess(t *testing.T) {
+	importer := CompoundImporter{
+		Importers: []jsonnet.Importer{
+			mockImporter{
+				content: jsonnet.MakeContents("valid content"),
+				path:    "valid.jsonnet",
+				err:     nil,
+			},
+			mockImporter{err: os.ErrNotExist},
+		},
+	}
+
+	contents, foundAt, err := importer.Import("", "test.jsonnet")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if foundAt != "valid.jsonnet" || contents.String() != "valid content" {
+		t.Errorf("unexpected result: %s, %s", contents.String(), foundAt)
+	}
+}
+
 func TestCompoundImporter_StopsOnError(t *testing.T) {
 	errBoom := errors.New("unexpected error")
 	importer := CompoundImporter{
