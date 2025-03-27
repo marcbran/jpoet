@@ -4,8 +4,8 @@ import (
 	"embed"
 	"fmt"
 	"github.com/google/go-jsonnet"
-	"github.com/marcbran/jsonnet-kit/internal/jsonnext"
 	"github.com/marcbran/jsonnet-kit/internal/manifest/fun"
+	"github.com/marcbran/jsonnet-kit/pkg/jsonnext"
 	"os"
 	"path"
 )

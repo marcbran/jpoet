@@ -18,7 +18,6 @@ type fsCacheEntry struct {
 	exists   bool
 }
 
-// Import TODO this is not testing well
 func (importer *FSImporter) Import(importedFrom, importedPath string) (contents jsonnet.Contents, foundAt string, err error) {
 	if importer.fsCache == nil {
 		importer.fsCache = make(map[string]*fsCacheEntry)
@@ -62,7 +61,10 @@ type CompoundImporter struct {
 func (c CompoundImporter) Import(importedFrom, importedPath string) (contents jsonnet.Contents, foundAt string, err error) {
 	for _, importer := range c.Importers {
 		contents, foundAt, err = importer.Import(importedFrom, importedPath)
-		if err == nil {
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
 			break
 		}
 	}
