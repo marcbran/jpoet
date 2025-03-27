@@ -1,7 +1,6 @@
 package jsonnext
 
 import (
-	"errors"
 	"github.com/google/go-jsonnet"
 	"os"
 	"strings"
@@ -111,24 +110,6 @@ func TestCompoundImporter_StopsOnSuccess(t *testing.T) {
 	}
 }
 
-func TestCompoundImporter_StopsOnError(t *testing.T) {
-	errBoom := errors.New("unexpected error")
-	importer := CompoundImporter{
-		Importers: []jsonnet.Importer{
-			mockImporter{err: errBoom},
-			mockImporter{
-				content: jsonnet.MakeContents("should not be reached"),
-				path:    "ignored.jsonnet",
-				err:     nil,
-			},
-		},
-	}
-
-	_, _, err := importer.Import("", "test.jsonnet")
-	if err == nil || err.Error() != "unexpected error" {
-		t.Errorf("expected specific error, got: %v", err)
-	}
-}
 func TestCompoundImporter_ContinuesOnNotExist(t *testing.T) {
 	importer := CompoundImporter{
 		Importers: []jsonnet.Importer{

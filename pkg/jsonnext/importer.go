@@ -62,9 +62,6 @@ func (c CompoundImporter) Import(importedFrom, importedPath string) (contents js
 	for _, importer := range c.Importers {
 		contents, foundAt, err = importer.Import(importedFrom, importedPath)
 		if err == nil {
-			return contents, foundAt, err
-		}
-		if !os.IsNotExist(err) {
 			break
 		}
 	}
