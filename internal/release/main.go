@@ -45,12 +45,20 @@ func Run(ctx context.Context, source, repo, branch, p, token string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		if ferr := sourceFile.Close(); ferr != nil {
+			err = ferr
+		}
+	}()
 	targetFile, err := fs.Create(path.Join(p, "main.libsonnet"))
 	if err != nil {
 		return err
 	}
-	defer targetFile.Close()
+	defer func() {
+		if ferr := targetFile.Close(); ferr != nil {
+			err = ferr
+		}
+	}()
 	_, err = io.Copy(targetFile, sourceFile)
 	if err != nil {
 		return err

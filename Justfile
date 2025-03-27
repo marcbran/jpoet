@@ -2,7 +2,7 @@
 default:
     @just --list
 
-build: test
+build: test lint
 	go build -v ./...
 
 install: build
@@ -10,6 +10,9 @@ install: build
 
 test:
     go test -v -cover -timeout=120s -parallel=10 ./...
+
+lint:
+	golangci-lint run
 
 [no-cd]
 jsonnet-release branch path="" source=".":
