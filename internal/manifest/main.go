@@ -25,7 +25,7 @@ func RunDir(dirname string, jpath []string) error {
 		},
 	})
 	vm.NativeFunction(fun.FormatJsonnet())
-	vm.TLACode("manifest", fmt.Sprintf("import '%s/main.jsonnet'", dirname))
+	vm.TLACode("manifest", fmt.Sprintf("import '%s/manifest.jsonnet'", dirname))
 	vm.StringOutput = true
 
 	files, err := vm.EvaluateFileMulti("lib/main.libsonnet")

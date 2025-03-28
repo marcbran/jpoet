@@ -1,4 +1,3 @@
-
 local flattenObject(value, separator='/') =
   if std.type(value) == 'object' then
     std.foldl(function(acc, curr) acc + curr, [
