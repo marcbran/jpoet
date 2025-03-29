@@ -44,19 +44,19 @@ This test tool is just a Go-based version of those scripts — built to make thi
    # Runs the tests in the current folder
    $ jsonnet-kit test
    
-   # Runs the tests in the current folder
+   # Runs the tests in the specified folder
    $ jsonnet-kit test ./examples/tests
    
    # Runs the tests with JSON output
    $ jsonnet-kit test --json
    ```
    
-   If all the tests are passing, the test command exits with `0` and outputs the number of passed tests:
+   If all the tests are passing, the test command exits with `0` and just outputs the number of passed tests:
    ```
    Passed: 7/7
    ```
 
-   If some of the tests are failing, the test command exits with `1` and outputs details about the failing tests:
+   If some of the tests are failing, the test command exits with `1` and also outputs details about the failing tests:
    ```
        Name: main_tests.libsonnet/romanNum/4
      Actual: IIII
