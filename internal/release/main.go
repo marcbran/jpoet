@@ -10,6 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/marcbran/jsonnet-kit/internal/terminal"
 	"io"
@@ -17,11 +18,34 @@ import (
 	"path"
 )
 
-func Run(ctx context.Context, source, repo, branch, p, token string) error {
-	authMethod := &http.BasicAuth{
-		Username: "github",
-		Password: token,
+func NewAuthMethodFromEnv() (transport.AuthMethod, error) {
+	privateKey := os.Getenv("GIT_PRIVATE_KEY")
+	password := os.Getenv("GIT_PASSWORD")
+	if privateKey != "" {
+		return ssh.NewPublicKeys("git", []byte(privateKey), password)
 	}
+	privateKeyFile := os.Getenv("GIT_PRIVATE_KEY_FILE")
+	if privateKeyFile != "" {
+		return ssh.NewPublicKeysFromFile("git", privateKeyFile, password)
+	}
+	username := os.Getenv("GIT_USERNAME")
+	if username != "" && password != "" {
+		return &http.BasicAuth{
+			Username: username,
+			Password: password,
+		}, nil
+	}
+	token := os.Getenv("GITHUB_TOKEN")
+	if token != "" {
+		return &http.BasicAuth{
+			Username: "github",
+			Password: token,
+		}, nil
+	}
+	return nil, nil
+}
+
+func Run(ctx context.Context, source, repo, branch, p string, authMethod transport.AuthMethod) error {
 	r, fs, err := cloneBranch(ctx, repo, branch, authMethod)
 	if err != nil {
 		return err
