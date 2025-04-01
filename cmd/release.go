@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"errors"
 	"github.com/marcbran/jsonnet-kit/internal/release"
 	"github.com/spf13/cobra"
-	"os"
 	"path"
 	"path/filepath"
 )
@@ -48,11 +46,11 @@ var releaseCmd = &cobra.Command{
 			branch = path.Base(abs)
 			p = path.Base(abs)
 		}
-		token := os.Getenv("GITHUB_TOKEN")
-		if token == "" {
-			return errors.New("GITHUB_TOKEN required")
+		authMethod, err := release.NewAuthMethodFromEnv()
+		if err != nil {
+			return err
 		}
-		err = release.Run(cmd.Context(), source, repo, branch, p, token)
+		err = release.Run(cmd.Context(), source, repo, branch, p, authMethod)
 		if err != nil {
 			return err
 		}
