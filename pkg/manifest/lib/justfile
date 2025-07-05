@@ -1,7 +1,6 @@
-set fallback := true
-
-default:
-    @just --list
 
 release:
-    @just jsonnet-release jsonnet-manifest
+    #!/usr/bin/env bash
+    set -eu
+
+    jsonnet-kit release -r https://github.com/marcbran/jsonnet.git -b "jsonnet-manifest" -p "jsonnet-manifest" "."

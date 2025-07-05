@@ -1,45 +1,42 @@
 
-default:
-    @just --list
+test-jsonnet:
+    #!/usr/bin/env bash
+    set -eu
 
-build: test lint
-	go build -v ./...
+    jsonnet-kit test ./internal
+    jsonnet-kit test ./pkg
 
-install: build
-	go install -v ./...
+test-go:
+    #!/usr/bin/env bash
+    set -eu
 
-test:
     go test -v -cover -timeout=120s -parallel=10 ./...
 
-lint:
-	golangci-lint run
+test: test-jsonnet test-go
 
-[no-cd]
-jsonnet-release branch path="" source=".":
+lint-go:
     #!/usr/bin/env bash
-    branch="{{branch}}"
-    path="{{path}}"
-    source="{{source}}"
+    set -eu
 
-    if [[ "${path}" == "" ]]; then
-      path="${branch}"
-    fi
+    golangci-lint run
 
-    rm -rf release
-    git clone git@github.com:marcbran/jsonnet.git release
+lint: lint-go
 
-    pushd release
-    git checkout "${branch}" || git checkout -b "${branch}"
-    git pull
-    popd
+build: test lint
+    #!/usr/bin/env bash
+    set -eu
 
-    mkdir -p "release/${path}"
-    cp "${source}/main.libsonnet" "release/${path}/main.libsonnet"
+    mkdir -p dist
+    go build -o ./dist -v ./...
 
-    pushd release
-    git add -A
-    git commit -m "release ${path}"
-    git push --set-upstream origin "${branch}"
-    popd
+it: build
+    #!/usr/bin/env bash
+    set -eu
 
-    rm -rf release
+    pushd ./examples/bundle && just it && popd
+
+install: build
+    #!/usr/bin/env bash
+    set -eu
+
+    go install -v ./...
