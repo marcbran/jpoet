@@ -16,7 +16,7 @@ func init() {
 	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(manifestCmd)
 	rootCmd.AddCommand(releaseCmd)
-	rootCmd.AddCommand(bundleCmd)
+	rootCmd.AddCommand(buildCmd)
 	rootCmd.PersistentFlags().StringArrayP("jpath", "J", []string{}, "Specify an additional library search dir (right-most wins)")
 }
 

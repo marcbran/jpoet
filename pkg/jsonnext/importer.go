@@ -18,40 +18,58 @@ type fsCacheEntry struct {
 	exists   bool
 }
 
-func (importer *FSImporter) Import(importedFrom, importedPath string) (contents jsonnet.Contents, foundAt string, err error) {
+func (importer *FSImporter) Import(importedFrom, importedPath string) (jsonnet.Contents, string, error) {
 	if importer.fsCache == nil {
 		importer.fsCache = make(map[string]*fsCacheEntry)
 	}
 
 	dir, _ := filepath.Split(importedFrom)
 	absPath := filepath.Join(dir, importedPath)
-	if cacheEntry, isCached := importer.fsCache[absPath]; isCached {
-		if !cacheEntry.exists {
-			return jsonnet.Contents{}, "", fmt.Errorf("couldn't open import %#v: no match in provided file system", importedPath)
-		}
-		return cacheEntry.contents, absPath, nil
+	contents, foundAt, err := importer.tryPath(absPath)
+	if err != nil {
+		return jsonnet.Contents{}, "", err
+	}
+	if foundAt != "" {
+		return contents, foundAt, nil
 	}
 
-	contentBytes, err := fs.ReadFile(importer.Fs, absPath)
+	contents, foundAt, err = importer.tryPath(importedPath)
+	if err != nil {
+		return jsonnet.Contents{}, "", err
+	}
+	if foundAt != "" {
+		return contents, foundAt, nil
+	}
+	return jsonnet.Contents{}, "", fmt.Errorf("couldn't open import %#v: no match in provided file system", importedPath)
+}
+
+func (importer *FSImporter) tryPath(p string) (jsonnet.Contents, string, error) {
+	if cacheEntry, isCached := importer.fsCache[p]; isCached {
+		if !cacheEntry.exists {
+			return jsonnet.Contents{}, "", nil
+		}
+		return cacheEntry.contents, p, nil
+	}
+
+	contentBytes, err := fs.ReadFile(importer.Fs, p)
 
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return jsonnet.Contents{}, "", err
 		}
 
-		entry := &fsCacheEntry{
+		importer.fsCache[p] = &fsCacheEntry{
 			exists: false,
 		}
-		importer.fsCache[absPath] = entry
-		return jsonnet.Contents{}, "", fmt.Errorf("couldn't open import %#v: no match in provided file system", importedPath)
+		return jsonnet.Contents{}, "", nil
 	}
 
 	entry := &fsCacheEntry{
 		exists:   true,
 		contents: jsonnet.MakeContentsRaw(contentBytes),
 	}
-	importer.fsCache[absPath] = entry
-	return entry.contents, absPath, nil
+	importer.fsCache[p] = entry
+	return entry.contents, p, nil
 }
 
 type CompoundImporter struct {

@@ -1,0 +1,43 @@
+it:
+    #!/usr/bin/env bash
+    set -eu
+
+    for example in */; do
+        if [ -d "$example" ] && [ -f "${example}main.libsonnet" ]; then
+            echo "$example"
+            ../../dist/jsonnet-kit build -i "${example}" -o "${example}/actual"
+
+            # Compare all files in expected folder with corresponding files in actual folder
+            if [ -d "${example}expected" ]; then
+                all_passed=true
+                for expected_file in "${example}expected"/*; do
+                    if [ -f "$expected_file" ]; then
+                        filename=$(basename "$expected_file")
+                        actual_file="${example}actual/${filename}"
+
+                        if [ -f "$actual_file" ]; then
+                            if diff "$expected_file" "$actual_file" > /dev/null; then
+                                echo "  ✓ $filename"
+                            else
+                                echo "  ✗ $filename"
+                                diff "$expected_file" "$actual_file"
+                                all_passed=false
+                            fi
+                        else
+                            echo "  ✗ $filename (missing in actual output)"
+                            all_passed=false
+                        fi
+                    fi
+                done
+
+                if [ "$all_passed" = true ]; then
+                    echo "  All files passed"
+                else
+                    echo "  Some files failed"
+                fi
+            else
+                echo "  No expected folder found"
+            fi
+            echo
+        fi
+    done

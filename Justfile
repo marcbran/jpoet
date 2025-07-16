@@ -33,7 +33,7 @@ it: build
     #!/usr/bin/env bash
     set -eu
 
-    pushd ./examples/bundle && just it && popd
+    pushd ./examples/pkg && just it && popd
 
 install: build
     #!/usr/bin/env bash
