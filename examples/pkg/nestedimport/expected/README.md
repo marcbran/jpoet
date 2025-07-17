@@ -1,8 +1,8 @@
 # nestedimport
 
-A nestedimport library.
+> A nestedimport library.
 
-This will inline all the imports and create the readme.
+- [Inlined Code](https://github.com/marcbran/jsonnet/blob/nestedimport/nestedimport/main.libsonnet): Inlined code published for usage in other projects
 
 ## Installation
 
@@ -17,6 +17,10 @@ Then you can import it into your file in order to use it:
 ```jsonnet
 local ni = import 'nestedimport/main.libsonnet';
 ```
+
+## Description
+
+This will inline all the imports and create the readme.
 
 ## Fields
 

@@ -57,11 +57,12 @@ local injectExampleString(examples, examplesNode) =
     }
   else examplesNode;
 
-local merge(lib, desc, examples, coord, usage) = {
+local merge(lib, desc, examples, coord, usage, source) = {
   type: std.type(lib),
   implementation:: lib,
   coord: coord,
   usage: usage,
+  source: source,
   description: std.get(desc, 'description', ''),
   examples: if std.type(examples) == 'object' then std.get(examples, 'examples', []) else [],
   example: if std.type(examples) == 'object' then std.get(examples, 'example', {}) else {},
@@ -72,16 +73,17 @@ local merge(lib, desc, examples, coord, usage) = {
       getDeep(examples, ['children', key], null),
       coord,
       {
-        path: '%s.%s' % [usage.path, key],
+        target: '%s.%s' % [usage.target, key],
         name: key,
-      }
+      },
+      source
     )
     for key in std.objectFields(desc.children)
   ],
 };
 
 local mergeRoot(lib, pkg, examples) =
-  merge(lib, pkg, examples, pkg.coord, pkg.usage) + { root: true };
+  merge(lib, pkg, examples, pkg.coord, pkg.usage, pkg.source) + { root: true };
 
 local heading(elem, depth) = [
   md.Heading(depth, elem.usage.name),
@@ -111,16 +113,49 @@ local install(elem, depth) = [
   md.FencedCodeBlock(
     |||
       local %s = import '%s/main.libsonnet';
-    ||| % [elem.usage.path, elem.usage.name], language='jsonnet'
+    ||| % [elem.usage.target, elem.usage.name], language='jsonnet'
   ),
 ];
+
+local summarySection(elem) =
+  local httpRepo =
+    if std.endsWith(elem.coord.repo, '.git')
+    then elem.coord.repo[:std.length(elem.coord.repo) - 4]
+    else elem.coord.repo;
+  [
+    md.Blockquote([md.Paragraph(std.split(elem.description, '\n')[0])]),
+    md.List('-', 0, (
+      if std.objectHas(elem, 'source') && elem.source != null then [
+        md.ListItem([
+          md.Paragraph([
+            md.Link('Source Code', elem.source),
+            ': Original source code',
+          ]),
+        ]),
+      ] else []
+    ) + [
+      md.ListItem([
+        md.Paragraph([
+          md.Link('Inlined Code', '%s/blob/%s/%s/main.libsonnet' % [httpRepo, elem.coord.branch, elem.coord.path]),
+          ': Inlined code published for usage in other projects',
+        ]),
+      ]),
+    ]),
+  ];
+
+local descriptionSection(elem, depth) =
+  local lines = std.split(elem.description, '\n');
+  if std.length(lines) > 0 then [
+    md.Heading(depth, 'Description'),
+    md.Paragraph(std.split(elem.description, '\n')[2:]),
+  ] else [];
 
 local usage(elem) = [
   md.FencedCodeBlock(
     if elem.type == 'function' then
-      '%s()' % elem.usage.path
+      '%s()' % elem.usage.target
     else
-      '%s' % elem.usage.path,
+      '%s' % elem.usage.target,
     language='jsonnet'
   ),
 ];
@@ -133,7 +168,7 @@ local example(example, usage, implementation, depth) =
        md.FencedCodeBlock(
          |||
            %s(%s)
-         ||| % [usage.path, std.join(', ', [std.manifestJson(input) for input in example.inputs])],
+         ||| % [usage.target, std.join(', ', [std.manifestJson(input) for input in example.inputs])],
          language='jsonnet'
        ),
      ] else [
@@ -142,7 +177,7 @@ local example(example, usage, implementation, depth) =
          |||
            local %s = import '%s/main.libsonnet';
            &nbsp;
-         ||| % [usage.path, usage.name] +
+         ||| % [usage.target, usage.name] +
          example.string,
          language='jsonnet'
        ),
@@ -173,14 +208,19 @@ local exampleList(examples, usage, implementation, depth) =
   else [];
 
 local documentation(elem, depth=1) =
+  local fields(elem, depth) =
+    if std.length(elem.children) > 0 then
+      [md.Heading(depth, 'Fields')]
+      + std.flattenArrays([documentation(child, depth + 1) for child in elem.children])
+    else [];
+
   if std.get(elem, 'root', false) then
     heading(elem, depth)
-    + summary(elem)
+    + summarySection(elem)
     + example(elem.example, elem.usage, elem.implementation, depth + 1)
-    + description(elem)
     + install(elem, depth + 1)
-    + [md.Heading(depth + 1, 'Fields')]
-    + std.flattenArrays([documentation(child, depth + 2) for child in elem.children])
+    + descriptionSection(elem, depth + 1)
+    + fields(elem, depth + 1)
   else
     heading(elem, depth)
     + summary(elem)
@@ -189,7 +229,6 @@ local documentation(elem, depth=1) =
     + example(elem.example { name: 'Example' }, elem.usage, elem.implementation, depth + 1)
     + exampleList(elem.examples, elem.usage, elem.implementation, depth + 1)
     + std.flattenArrays([documentation(child, depth + 1) for child in elem.children]);
-
 
 local manifest(lib, pkg, examples, examplesString) =
   local elem = mergeRoot(lib, pkg, injectExampleString(examples, examplesString));

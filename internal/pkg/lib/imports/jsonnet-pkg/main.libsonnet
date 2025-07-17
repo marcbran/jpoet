@@ -6,9 +6,10 @@
       path: pkg.path,
     },
     usage: {
-      path: pkg.target,
+      target: pkg.target,
       name: pkg.path,
     },
+    source: std.get(pkg, 'source', null),
     description: description,
     children: children,
   },

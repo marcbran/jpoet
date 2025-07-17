@@ -1,15 +1,15 @@
 package cmd
 
 import (
-	"github.com/marcbran/jsonnet-kit/internal/release"
+	"github.com/marcbran/jsonnet-kit/internal/repo"
 	"github.com/spf13/cobra"
 	"path"
 	"path/filepath"
 )
 
-var releaseCmd = &cobra.Command{
-	Use:   "release [flags] directory",
-	Short: "Jsonnet release is a simple tool to release Jsonnet modules",
+var pushCmd = &cobra.Command{
+	Use:   "push [flags] directory",
+	Short: "Jsonnet push is a simple tool to push Jsonnet modules",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -22,7 +22,7 @@ var releaseCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		repo, err := cmd.Flags().GetString("repo")
+		r, err := cmd.Flags().GetString("repo")
 		if err != nil {
 			return err
 		}
@@ -46,11 +46,11 @@ var releaseCmd = &cobra.Command{
 			branch = path.Base(abs)
 			p = path.Base(abs)
 		}
-		authMethod, err := release.NewAuthMethodFromEnv()
+		authMethod, err := repo.NewAuthMethodFromEnv()
 		if err != nil {
 			return err
 		}
-		err = release.Run(cmd.Context(), source, repo, branch, p, authMethod)
+		err = repo.Push(cmd.Context(), source, r, branch, p, authMethod)
 		if err != nil {
 			return err
 		}
@@ -59,7 +59,7 @@ var releaseCmd = &cobra.Command{
 }
 
 func init() {
-	releaseCmd.Flags().StringP("repo", "r", "", "The git repository targeted for release")
-	releaseCmd.Flags().StringP("branch", "b", "", "The module's branch name")
-	releaseCmd.Flags().StringP("path", "p", "", "The folder name of the module")
+	pushCmd.Flags().StringP("repo", "r", "", "The git repository targeted for the push")
+	pushCmd.Flags().StringP("branch", "b", "", "The module's branch name")
+	pushCmd.Flags().StringP("path", "p", "", "The folder name of the module")
 }

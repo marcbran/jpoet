@@ -1,8 +1,8 @@
 # singlefile
 
-A singlefile library.
+> A singlefile library.
 
-This should just copy the library as-is and create a README file for it.
+- [Inlined Code](https://github.com/marcbran/jsonnet/blob/singlefile/singlefile/main.libsonnet): Inlined code published for usage in other projects
 
 ## Installation
 
@@ -17,6 +17,10 @@ Then you can import it into your file in order to use it:
 ```jsonnet
 local sf = import 'singlefile/main.libsonnet';
 ```
+
+## Description
+
+This should just copy the library as-is and create a README file for it.
 
 ## Fields
 
