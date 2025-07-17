@@ -13,7 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/marcbran/jsonnet-kit/internal/terminal"
+	"github.com/marcbran/devsonnet/internal/terminal"
 	"io"
 	"os"
 	"path"

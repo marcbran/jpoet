@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/marcbran/jsonnet-kit/internal/repo"
+	"github.com/marcbran/devsonnet/internal/repo"
 	"github.com/spf13/cobra"
 	"path"
 	"path/filepath"

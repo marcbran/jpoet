@@ -1,3 +1,3 @@
 FROM scratch
-ENTRYPOINT ["/jsonnet-kit"]
-COPY jsonnet-kit /
+ENTRYPOINT ["/devsonnet"]
+COPY devsonnet /

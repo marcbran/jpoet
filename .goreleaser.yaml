@@ -1,6 +1,6 @@
 version: 2
 
-project_name: jsonnet-kit
+project_name: devsonnet
 
 before:
   hooks:
@@ -30,10 +30,10 @@ archives:
 
 dockers:
   - image_templates:
-      - "ghcr.io/marcbran/jsonnet-kit:v{{ .Major }}"
-      - "ghcr.io/marcbran/jsonnet-kit:v{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/marcbran/jsonnet-kit:{{ .Tag }}"
-      - "ghcr.io/marcbran/jsonnet-kit:latest"
+      - "ghcr.io/marcbran/devsonnet:v{{ .Major }}"
+      - "ghcr.io/marcbran/devsonnet:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/marcbran/devsonnet:{{ .Tag }}"
+      - "ghcr.io/marcbran/devsonnet:latest"
 
 changelog:
   sort: asc

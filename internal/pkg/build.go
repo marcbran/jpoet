@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
+	"github.com/marcbran/devsonnet/internal/pkg/lib/imports"
 	"github.com/marcbran/gensonnet/pkg/gensonnet"
-	"github.com/marcbran/jsonnet-kit/internal/pkg/lib/imports"
 )
 
 //go:embed lib
