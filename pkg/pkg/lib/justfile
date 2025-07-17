@@ -3,9 +3,9 @@ set fallback := true
 test:
     #!/usr/bin/env bash
 
-    jsonnet-kit test
+    devsonnet test
 
 release: test
     #!/usr/bin/env bash
 
-    jsonnet-kit release -r https://github.com/marcbran/jsonnet.git -b "jsonnet-pkg" -p "jsonnet-pkg" "."
+    devsonnet release -r https://github.com/marcbran/jsonnet.git -b "jsonnet-pkg" -p "jsonnet-pkg" "."

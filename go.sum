@@ -71,6 +71,8 @@ github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/marcbran/gensonnet v0.0.0-20250716103331-7960f9a7f507 h1:Pc68agdq+QMoF7vBREKhpH+Gg5rTf5e83eLoCqhuzOE=
 github.com/marcbran/gensonnet v0.0.0-20250716103331-7960f9a7f507/go.mod h1:BcS2JzoBvE5qkA/CuLFf1e4qeR2dXz4qAn+9eXCD704=
+github.com/marcbran/jsonnet-kit v0.8.0 h1:KLZVntOM9GidfgLSFrMMN/t0qDD4we1xxmY+OhVQkE0=
+github.com/marcbran/jsonnet-kit v0.8.0/go.mod h1:LepvDwIs/O9GSquNa9vxrQVtuIf9NbkrqDTLSmhwOOU=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6TULQc=

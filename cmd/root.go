@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "jsonnet-kit",
+	Use:   "devsonnet",
 	Short: "Jsonnet kit is a toolkit that provides a number of different jsonnet-related tools",
 	Long:  ``,
 }
