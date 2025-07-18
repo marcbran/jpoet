@@ -1,6 +1,6 @@
 {
   pkg(pkg, description, children={}): {
-    coord: {
+    coordinates: {
       repo: pkg.repo,
       branch: pkg.branch,
       path: pkg.path,

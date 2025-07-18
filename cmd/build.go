@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/marcbran/devsonnet/internal/pkg"
 	"github.com/spf13/cobra"
+	"path/filepath"
 )
 
 var buildCmd = &cobra.Command{
@@ -10,15 +11,18 @@ var buildCmd = &cobra.Command{
 	Short: "Jsonnet build is a simple tool to build Jsonnet modules",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		input, err := cmd.Flags().GetString("input")
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		pkgDir := "."
+		if len(args) > 0 {
+			pkgDir = args[0]
+		}
+		buildDir, err := cmd.Flags().GetString("build")
 		if err != nil {
 			return err
 		}
-		output, err := cmd.Flags().GetString("output")
-		if err != nil {
-			return err
-		}
-		err = pkg.Build(cmd.Context(), input, output)
+		buildDir = filepath.Join(pkgDir, buildDir)
+		err = pkg.Build(cmd.Context(), pkgDir, buildDir)
 		if err != nil {
 			return err
 		}
@@ -27,6 +31,5 @@ var buildCmd = &cobra.Command{
 }
 
 func init() {
-	buildCmd.Flags().StringP("input", "i", ".", "The path to the main input directory")
-	buildCmd.Flags().StringP("output", "o", "out", "The path to the packaged output directory")
+	buildCmd.Flags().StringP("build", "b", "build", "The path to the build directory, relative to the package directory")
 }

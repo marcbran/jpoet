@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/marcbran/devsonnet/internal/pkg"
 	"github.com/marcbran/devsonnet/internal/terminal"
 	"io"
 	"os"
@@ -46,7 +47,15 @@ func NewAuthMethodFromEnv() (transport.AuthMethod, error) {
 	return nil, nil
 }
 
-func Push(ctx context.Context, source, repo, branch, p string, authMethod transport.AuthMethod) error {
+func Push(ctx context.Context, pkgDir, buildDir string, authMethod transport.AuthMethod) error {
+	cfg, err := pkg.ResolvePkgConfig(pkgDir)
+	if err != nil {
+		return err
+	}
+	repo := cfg.Coordinates.Repo
+	branch := cfg.Coordinates.Branch
+	p := cfg.Coordinates.Path
+
 	r, fs, err := cloneBranch(ctx, repo, branch, authMethod)
 	if err != nil {
 		return err
@@ -60,7 +69,7 @@ func Push(ctx context.Context, source, repo, branch, p string, authMethod transp
 	if err != nil {
 		return err
 	}
-	err = copyFile(source, fs, p, "main.libsonnet")
+	err = copyFile(buildDir, fs, p, "main.libsonnet")
 	if err != nil {
 		return err
 	}
@@ -73,7 +82,7 @@ func Push(ctx context.Context, source, repo, branch, p string, authMethod transp
 	if err != nil {
 		return err
 	}
-	err = copyFile(source, fs, branch, "README.md")
+	err = copyFile(buildDir, fs, branch, "README.md")
 	if err != nil {
 		return err
 	}

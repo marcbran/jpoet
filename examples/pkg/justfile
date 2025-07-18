@@ -5,7 +5,8 @@ it:
     for example in */; do
         if [ -d "$example" ] && [ -f "${example}main.libsonnet" ]; then
             echo "$example"
-            ../../dist/devsonnet build -i "${example}" -o "${example}/actual"
+            rm -rf "${example}/actual"
+            ../../dist/devsonnet build -b "actual" "${example}"
 
             # Compare all files in expected folder with corresponding files in actual folder
             if [ -d "${example}expected" ]; then

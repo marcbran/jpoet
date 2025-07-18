@@ -4,7 +4,6 @@ import (
 	"context"
 	"embed"
 	"errors"
-	"fmt"
 	"github.com/marcbran/gensonnet/pkg/gensonnet/config"
 	"os"
 	"path/filepath"
@@ -15,14 +14,9 @@ import (
 	"github.com/marcbran/gensonnet/pkg/gensonnet"
 )
 
-//go:embed lib
-var lib embed.FS
-
-func Build(ctx context.Context, pkgDir, outDir string) error {
+func Build(ctx context.Context, pkgDir, buildDir string) error {
 	mainFile := filepath.Join(pkgDir, "main.libsonnet")
 	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
-
-	outMainFile := filepath.Join(outDir, "main.libsonnet")
 
 	_, err := os.Stat(mainFile)
 	if err != nil {
@@ -30,6 +24,10 @@ func Build(ctx context.Context, pkgDir, outDir string) error {
 			return err
 		}
 		return errors.New("main.libsonnet not found")
+	}
+	inlinedMainCode, err := inlineFile(mainFile)
+	if err != nil {
+		return err
 	}
 
 	_, err = os.Stat(pkgFile)
@@ -39,45 +37,46 @@ func Build(ctx context.Context, pkgDir, outDir string) error {
 		}
 		return errors.New("pkg.libsonnet not found")
 	}
+	pkgCode, err := os.ReadFile(pkgFile)
+	if err != nil {
+		return err
+	}
 
-	examplesImport := fmt.Sprintf("import '%s/examples.libsonnet'", pkgDir)
-	examplesStringImport := fmt.Sprintf("importstr '%s/examples.libsonnet'", pkgDir)
-	examplesFile := filepath.Join(pkgDir, "examples.libsonnet")
-	_, err = os.Stat(examplesFile)
+	examplesCode := []byte("{}")
+	_, err = os.Stat(filepath.Join(pkgDir, "examples.libsonnet"))
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
-		examplesImport = "null"
-		examplesStringImport = "null"
-	}
-
-	err = os.MkdirAll(outDir, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	err = inlineFile(mainFile, outMainFile)
-	if err != nil {
-		return err
+	} else {
+		examplesCode, err = os.ReadFile(pkgFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = gensonnet.RenderWithConfig(ctx, config.Config{
 		Render: config.RenderConfig{
-			TargetDir: outDir,
+			TargetDir: buildDir,
 			Lib: config.LibConfig{
-				ManifestStr: fmt.Sprintf(`
-				local lib = import '%s/main.libsonnet';
-				local pkg = import '%s/pkg.libsonnet';
-				local examples = %s;
-				local examplesString = %s;
+				ManifestCode: `
+					local lib = import 'input/lib.libsonnet';
+					local libString = importstr 'input/lib.libsonnet';
+					local pkg = import 'input/pkg.libsonnet';
+					local examples = import 'input/examples.libsonnet';
+					local examplesString = importstr 'input/examples.libsonnet';
 
-				local manifest = import 'lib/main.libsonnet';
-				manifest(lib, pkg, examples, examplesString)
-				`, pkgDir, pkgDir, examplesImport, examplesStringImport),
+					local manifest = import 'lib/manifest.libsonnet';
+					manifest(lib, libString, pkg, examples, examplesString)
+				`,
 				Filesystems: []embed.FS{
 					lib,
 					imports.Fs,
+				},
+				Imports: map[string]string{
+					"input/lib.libsonnet":      inlinedMainCode,
+					"input/pkg.libsonnet":      string(pkgCode),
+					"input/examples.libsonnet": string(examplesCode),
 				},
 			},
 		},
@@ -88,30 +87,28 @@ func Build(ctx context.Context, pkgDir, outDir string) error {
 	return nil
 }
 
-func inlineFile(input string, output string) error {
-	node, finalFodder, err := readRawAST(input)
+func inlineFile(input string) (string, error) {
+	node, finalFodder, err := readInlineNode(input)
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	err = inlineNode(node, input)
+	format, err := formatter.FormatNode(node, finalFodder, formatter.DefaultOptions())
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	err = writeFormattedNode(node, finalFodder, output)
-	if err != nil {
-		return err
-	}
-	return nil
+	return format, nil
 }
 
-func readRawAST(filename string) (ast.Node, ast.Fodder, error) {
+func readInlineNode(filename string) (ast.Node, ast.Fodder, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, nil, err
 	}
 	node, finalFodder, err := formatter.SnippetToRawAST(filename, string(b))
+	if err != nil {
+		return nil, nil, err
+	}
+	err = inlineNode(node, filename)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,11 +122,7 @@ func inlineNode(node ast.Node, filename string) error {
 			if err != nil {
 				return err
 			}
-			impNode, _, err := readRawAST(impFilename)
-			if err != nil {
-				return err
-			}
-			err = inlineNode(impNode, impFilename)
+			impNode, _, err := readInlineNode(impFilename)
 			if err != nil {
 				return err
 			}
@@ -141,18 +134,6 @@ func inlineNode(node ast.Node, filename string) error {
 			local.Binds[0].Body = impNode
 		}
 		return inlineNode(local.Body, filename)
-	}
-	return nil
-}
-
-func writeFormattedNode(node ast.Node, finalFodder ast.Fodder, filename string) error {
-	format, err := formatter.FormatNode(node, finalFodder, formatter.DefaultOptions())
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(filename, []byte(format), 0644)
-	if err != nil {
-		return err
 	}
 	return nil
 }
