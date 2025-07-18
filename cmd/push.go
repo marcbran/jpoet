@@ -3,7 +3,6 @@ package cmd
 import (
 	"github.com/marcbran/devsonnet/internal/repo"
 	"github.com/spf13/cobra"
-	"path"
 	"path/filepath"
 )
 
@@ -14,43 +13,20 @@ var pushCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true
-		source := "."
+		pkgDir := "."
 		if len(args) > 0 {
-			source = args[0]
+			pkgDir = args[0]
 		}
-		err := cmd.MarkFlagRequired("repo")
+		buildDir, err := cmd.Flags().GetString("build")
 		if err != nil {
 			return err
 		}
-		r, err := cmd.Flags().GetString("repo")
-		if err != nil {
-			return err
-		}
-		branch, err := cmd.Flags().GetString("branch")
-		if err != nil {
-			return err
-		}
-		p, err := cmd.Flags().GetString("path")
-		if err != nil {
-			return err
-		}
-		if branch == "" && p != "" {
-			branch = p
-		} else if branch != "" && p == "" {
-			p = branch
-		} else if branch == "" && p == "" {
-			abs, err := filepath.Abs(source)
-			if err != nil {
-				return err
-			}
-			branch = path.Base(abs)
-			p = path.Base(abs)
-		}
+		buildDir = filepath.Join(pkgDir, buildDir)
 		authMethod, err := repo.NewAuthMethodFromEnv()
 		if err != nil {
 			return err
 		}
-		err = repo.Push(cmd.Context(), source, r, branch, p, authMethod)
+		err = repo.Push(cmd.Context(), pkgDir, buildDir, authMethod)
 		if err != nil {
 			return err
 		}
@@ -59,7 +35,5 @@ var pushCmd = &cobra.Command{
 }
 
 func init() {
-	pushCmd.Flags().StringP("repo", "r", "", "The git repository targeted for the push")
-	pushCmd.Flags().StringP("branch", "b", "", "The module's branch name")
-	pushCmd.Flags().StringP("path", "p", "", "The folder name of the module")
+	pushCmd.Flags().StringP("build", "b", "build", "The path to the build directory, relative to the package directory")
 }
