@@ -103,7 +103,7 @@ local example(example, usage, implementation, depth) =
          |||
            local %s = import '%s/main.libsonnet';
            &nbsp;
-         ||| % [usage.target, usage.name] +
+         ||| % [std.split(usage.target, '.')[0], usage.name] +
          example.string,
          language='jsonnet'
        ),
@@ -111,7 +111,10 @@ local example(example, usage, implementation, depth) =
       md.Paragraph([md.Strong('yields')]),
       md.FencedCodeBlock(
         if std.objectHas(example, 'output') then
-          example.output
+          if std.type(example.output) == 'string' then
+            example.output
+          else
+            std.manifestJson(example.output)
         else
           std.manifestJson(
             if std.objectHas(example, 'inputs') then
