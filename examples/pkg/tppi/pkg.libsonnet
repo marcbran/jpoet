@@ -10,4 +10,5 @@ p.pkg({
   Test project, please ignore.
 
   This is a project to test the build and push pipeline.
+  The project itself is empty.
 |||)

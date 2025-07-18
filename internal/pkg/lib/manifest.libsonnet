@@ -20,7 +20,7 @@ local summary(elem) = [
 ];
 
 local description(elem) = [
-  md.Paragraph(std.split(elem.description, '\n')[2:]),
+  md.Paragraph(std.join('\n', std.split(elem.description, '\n')[2:])),
 ];
 
 local summarySection(elem) =
@@ -53,7 +53,7 @@ local descriptionSection(elem, depth) =
   local lines = std.split(elem.description, '\n');
   if std.length(lines) > 0 then [
     md.Heading(depth, 'Description'),
-    md.Paragraph(std.split(elem.description, '\n')[2:]),
+    md.Paragraph(std.join('\n', std.split(elem.description, '\n')[2:])),
   ] else [];
 
 local install(elem, depth) = [
