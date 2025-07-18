@@ -23,3 +23,4 @@ local tppi = import 'tppi/main.libsonnet';
 ## Description
 
 This is a project to test the build and push pipeline.
+The project itself is empty.

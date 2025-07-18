@@ -26,13 +26,11 @@ local injectExampleString(examples, examplesNode) =
       );
 
     examples {
-      example: injectSingleExampleString(examples.example, getDeep(examplesNode.arguments.positional, [0], {})),
-      examples: injectArrayExampleString(examples.examples, getDeep(examplesNode.arguments.positional, [0, 'expr', 'elements'], [])),
-      ex: {
-        children: {
-          [field.id]: injectExampleString(examples.ex.children[field.id], field.expr2)
-          for field in getDeep(examplesNode.arguments.positional, [1, 'expr', 'fields'], [])
-        },
+      example: injectSingleExampleString(getDeep(examples, ['example'], {}), getDeep(examplesNode.arguments.positional, [0], {})),
+      examples: injectArrayExampleString(getDeep(examples, ['examples'], []), getDeep(examplesNode.arguments.positional, [0, 'expr', 'elements'], [])),
+      children: {
+        [field.id]: injectExampleString(examples.children[field.id], field.expr2)
+        for field in getDeep(examplesNode.arguments.positional, [1, 'expr', 'fields'], [])
       },
     }
   else examplesNode;
@@ -65,7 +63,7 @@ local merge(lib, pkg, examples) =
   mergeRec(lib, pkg, examples, pkg.coordinates, pkg.usage, pkg.source) + { root: true };
 
 local resolvePkgConfig(lib, pkg, examples, examplesString) =
-  local injectedExamples = if examples != null then injectExampleString(examples, examplesString) else {};
+  local injectedExamples = injectExampleString(examples, examplesString);
   local pkgConfig = merge(lib, pkg, injectedExamples);
   pkgConfig;
 
