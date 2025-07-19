@@ -9,4 +9,16 @@ p.ex({
       foo: 'bar',
     },
   }),
+  test2: p.ex([{
+    name: 'Without parameters',
+    inputs: [],
+    expected: {
+      foo: 'bar',
+    },
+  }, {
+    name: 'Markdown format with gensonnet',
+    example:
+      local g = import 'gensonnet/main.libsonnet';
+      g.parseMarkdown('# %s' % [ex.test1.foo]),
+  }]),
 })
