@@ -130,10 +130,10 @@ local example(example, usage, implementation, depth) =
 local exampleList(examples, usage, implementation, depth) =
   if std.length(examples) > 0 then
     [md.Heading(depth, 'Examples')] +
-    [
+    std.flattenArrays([
       example(ex, usage, implementation, depth + 1)
       for ex in examples
-    ]
+    ])
   else [];
 
 local documentation(elem, depth=1) =

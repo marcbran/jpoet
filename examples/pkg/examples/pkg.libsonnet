@@ -15,4 +15,9 @@ p.pkg({
       Test property.
     |||,
   ),
+  test2: p.desc(
+    |||
+      Test function property.
+    |||,
+  ),
 })

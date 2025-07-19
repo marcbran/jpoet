@@ -72,6 +72,22 @@ func (importer *FSImporter) tryPath(p string) (jsonnet.Contents, string, error) 
 	return entry.contents, p, nil
 }
 
+type MemoryImporter struct {
+	Data map[string]jsonnet.Contents
+}
+
+func (importer *MemoryImporter) Import(importedFrom, importedPath string) (contents jsonnet.Contents, foundAt string, err error) {
+	dir, _ := filepath.Split(importedFrom)
+	absPath := filepath.Join(dir, importedPath)
+	if content, ok := importer.Data[absPath]; ok {
+		return content, importedPath, nil
+	}
+	if content, ok := importer.Data[importedPath]; ok {
+		return content, importedPath, nil
+	}
+	return jsonnet.Contents{}, "", fmt.Errorf("import not available %v", importedPath)
+}
+
 type CompoundImporter struct {
 	Importers []jsonnet.Importer
 }
