@@ -1,4 +1,4 @@
-package cmd
+package pkg
 
 import (
 	"github.com/marcbran/devsonnet/internal/pkg"
@@ -8,7 +8,7 @@ import (
 
 var buildCmd = &cobra.Command{
 	Use:   "build [flags] directory",
-	Short: "Jsonnet build is a simple tool to build Jsonnet modules",
+	Short: "Builds Jsonnet packages",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
