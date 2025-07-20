@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/marcbran/devsonnet/cmd/pkg"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -14,9 +15,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(testCmd)
-	rootCmd.AddCommand(buildCmd)
-	rootCmd.AddCommand(pushCmd)
-	rootCmd.PersistentFlags().StringArrayP("jpath", "J", []string{}, "Specify an additional library search dir (right-most wins)")
+	rootCmd.AddCommand(pkg.Cmd)
 }
 
 func Execute() {

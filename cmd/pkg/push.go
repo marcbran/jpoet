@@ -1,4 +1,4 @@
-package cmd
+package pkg
 
 import (
 	"github.com/marcbran/devsonnet/internal/repo"
@@ -8,7 +8,7 @@ import (
 
 var pushCmd = &cobra.Command{
 	Use:   "push [flags] directory",
-	Short: "Jsonnet push is a simple tool to push Jsonnet modules",
+	Short: "Pushes Jsonnet packages to the target repository",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
