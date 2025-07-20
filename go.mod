@@ -7,7 +7,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/google/go-jsonnet v0.21.0
-	github.com/marcbran/gensonnet v0.0.0-20250718054812-25aae03c3f33
+	github.com/marcbran/gensonnet v0.1.1-0.20250719082240-e749ead57d9a
 	github.com/spf13/cobra v1.9.1
 )
 

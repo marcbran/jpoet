@@ -39,7 +39,6 @@ ex.test1
 
 ```jsonnet
 local ex = import 'test1/main.libsonnet';
-&nbsp;
 ex.test1
 ```
 
@@ -84,7 +83,6 @@ ex.test2()
 
 ```jsonnet
 local ex = import 'test2/main.libsonnet';
-&nbsp;
 local g = import 'gensonnet/main.libsonnet';
 g.parseMarkdown('# %s' % [ex.test1.foo])
 ```
