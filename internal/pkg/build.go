@@ -61,8 +61,8 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 			TargetDir: buildDir,
 			Lib: config.LibConfig{
 				ManifestCode: `
-					local lib = import 'input/lib.libsonnet';
-					local libString = importstr 'input/lib.libsonnet';
+					local lib = import 'input/main.libsonnet';
+					local libString = importstr 'input/main.libsonnet';
 					local pkg = import 'input/pkg.libsonnet';
 					local examples = import 'input/examples.libsonnet';
 					local examplesString = importstr 'input/examples.libsonnet';
@@ -75,7 +75,7 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 					imports.Fs,
 				},
 				Imports: map[string]string{
-					"input/lib.libsonnet":      inlinedMainCode,
+					"input/main.libsonnet":     inlinedMainCode,
 					"input/pkg.libsonnet":      string(pkgCode),
 					"input/examples.libsonnet": string(examplesCode),
 				},

@@ -86,11 +86,11 @@ local usage(elem) = [
   ),
 ];
 
-local example(example, usage, implementation, depth) =
+local example(example, coordinates, usage, implementation, depth) =
   if std.objectHas(example, 'inputs') || std.objectHas(example, 'string') then
     [if std.objectHas(example, 'name') then md.Heading(depth, example.name) else ''] +
     (if std.objectHas(example, 'inputs') then [
-       md.Paragraph([md.Strong('Calling')]),
+       md.Heading(depth + 1, 'Calling'),
        md.FencedCodeBlock(
          |||
            %s(%s)
@@ -98,40 +98,36 @@ local example(example, usage, implementation, depth) =
          language='jsonnet'
        ),
      ] else [
-       md.Paragraph([md.Strong('Running')]),
+       md.Heading(depth + 1, 'Running'),
        md.FencedCodeBlock(
          |||
            local %s = import '%s/main.libsonnet';
-           &nbsp;
-         ||| % [std.split(usage.target, '.')[0], usage.name] +
+         ||| % [std.split(usage.target, '.')[0], coordinates.path] +
          example.string,
          language='jsonnet'
        ),
      ]) + [
-      md.Paragraph([md.Strong('yields')]),
-      md.FencedCodeBlock(
+      md.Heading(depth + 1, 'yields'),
+      local output =
         if std.objectHas(example, 'output') then
-          if std.type(example.output) == 'string' then
-            example.output
-          else
-            std.manifestJson(example.output)
+          example.output
         else
-          std.manifestJson(
-            if std.objectHas(example, 'inputs') then
-              invoke(implementation, example.inputs)
-            else
-              example.example
-          ),
-        language='json'
+          if std.objectHas(example, 'inputs') then
+            invoke(implementation, example.inputs)
+          else
+            example.example;
+      md.FencedCodeBlock(
+        if std.type(output) == 'string' then output else std.manifestJson(output),
+        if std.type(output) == 'string' then '' else 'json'
       ),
     ]
   else [];
 
-local exampleList(examples, usage, implementation, depth) =
+local exampleList(examples, coordinates, usage, implementation, depth) =
   if std.length(examples) > 0 then
     [md.Heading(depth, 'Examples')] +
     std.flattenArrays([
-      example(ex, usage, implementation, depth + 1)
+      example(ex, coordinates, usage, implementation, depth + 1)
       for ex in examples
     ])
   else [];
@@ -146,7 +142,7 @@ local documentation(elem, depth=1) =
   if std.get(elem, 'root', false) then
     heading(elem, depth)
     + summarySection(elem)
-    + example(elem.example, elem.usage, elem.implementation, depth + 1)
+    + example(elem.example, elem.coordinates, elem.usage, elem.implementation, depth + 1)
     + install(elem, depth + 1)
     + descriptionSection(elem, depth + 1)
     + fields(elem, depth + 1)
@@ -155,8 +151,8 @@ local documentation(elem, depth=1) =
     + summary(elem)
     + usage(elem)
     + description(elem)
-    + example(elem.example { name: 'Example' }, elem.usage, elem.implementation, depth + 1)
-    + exampleList(elem.examples, elem.usage, elem.implementation, depth + 1)
+    + example(elem.example { name: 'Example' }, elem.coordinates, elem.usage, elem.implementation, depth + 1)
+    + exampleList(elem.examples, elem.coordinates, elem.usage, elem.implementation, depth + 1)
     + std.flattenArrays([documentation(child, depth + 1) for child in elem.children]);
 
 local manifest(lib, libString, pkg, examples, examplesString) =
