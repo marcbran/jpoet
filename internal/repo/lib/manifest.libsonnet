@@ -34,7 +34,7 @@ local index(files, depth=1) = md.Document([
 ] + std.flattenArrays([
   pkg(kv.key, kv.value, 2)
   for kv in std.objectKeysValues(files)
-  if std.endsWith(kv.key, 'README.md')
+  if std.endsWith(kv.key, '/README.md')
 ]));
 
 local manifest(files) = {
