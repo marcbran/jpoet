@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/marcbran/devsonnet/cmd/pkg"
+	"github.com/marcbran/devsonnet/cmd/repo"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -16,6 +17,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(pkg.Cmd)
+	rootCmd.AddCommand(repo.Cmd)
 }
 
 func Execute() {
