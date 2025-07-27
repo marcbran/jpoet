@@ -1,6 +1,6 @@
 version: 2
 
-project_name: devsonnet
+project_name: jpoet
 
 before:
   hooks:
@@ -30,10 +30,10 @@ archives:
 
 dockers:
   - image_templates:
-      - "ghcr.io/marcbran/devsonnet:v{{ .Major }}"
-      - "ghcr.io/marcbran/devsonnet:v{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/marcbran/devsonnet:{{ .Tag }}"
-      - "ghcr.io/marcbran/devsonnet:latest"
+      - "ghcr.io/marcbran/jpoet:v{{ .Major }}"
+      - "ghcr.io/marcbran/jpoet:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/marcbran/jpoet:{{ .Tag }}"
+      - "ghcr.io/marcbran/jpoet:latest"
 
 changelog:
   sort: asc

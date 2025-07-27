@@ -1,4 +1,4 @@
-module github.com/marcbran/devsonnet
+module github.com/marcbran/jpoet
 
 go 1.24.4
 

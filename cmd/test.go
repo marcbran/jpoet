@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
-	"github.com/marcbran/devsonnet/internal/terminal"
-	"github.com/marcbran/devsonnet/internal/test"
+	"github.com/marcbran/jpoet/internal/terminal"
+	"github.com/marcbran/jpoet/internal/test"
 	"github.com/spf13/cobra"
 	"os"
 )

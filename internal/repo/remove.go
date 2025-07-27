@@ -6,7 +6,7 @@ import (
 	"path"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/marcbran/devsonnet/internal/pkg"
+	"github.com/marcbran/jpoet/internal/pkg"
 )
 
 func Remove(ctx context.Context, pkgDir string, authMethod transport.AuthMethod) error {

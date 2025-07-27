@@ -2,14 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/marcbran/devsonnet/cmd/pkg"
-	"github.com/marcbran/devsonnet/cmd/repo"
+	"github.com/marcbran/jpoet/cmd/pkg"
+	"github.com/marcbran/jpoet/cmd/repo"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "devsonnet",
+	Use:   "jpoet",
 	Short: "Jsonnet kit is a toolkit that provides a number of different jsonnet-related tools",
 	Long:  ``,
 }
