@@ -1,4 +1,4 @@
-package jsonnext
+package jpoet
 
 import (
 	"github.com/google/go-jsonnet"

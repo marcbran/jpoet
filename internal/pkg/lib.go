@@ -6,7 +6,7 @@ import (
 	"errors"
 	"github.com/google/go-jsonnet"
 	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
-	"github.com/marcbran/jpoet/pkg/jsonnext"
+	"github.com/marcbran/jpoet/pkg/jpoet"
 	"os"
 	"path/filepath"
 )
@@ -16,10 +16,10 @@ var lib embed.FS
 
 func vm() *jsonnet.VM {
 	vm := jsonnet.MakeVM()
-	vm.Importer(jsonnext.CompoundImporter{
+	vm.Importer(jpoet.CompoundImporter{
 		Importers: []jsonnet.Importer{
-			&jsonnext.FSImporter{Fs: lib},
-			&jsonnext.FSImporter{Fs: imports.Fs},
+			&jpoet.FSImporter{Fs: lib},
+			&jpoet.FSImporter{Fs: imports.Fs},
 			&jsonnet.FileImporter{},
 		},
 	})
@@ -73,10 +73,10 @@ func ResolvePkgConfig(pkgDir string) (Config, error) {
 	}
 
 	vm := vm()
-	vm.Importer(jsonnext.CompoundImporter{
+	vm.Importer(jpoet.CompoundImporter{
 		Importers: []jsonnet.Importer{
-			&jsonnext.FSImporter{Fs: lib},
-			&jsonnext.FSImporter{Fs: imports.Fs},
+			&jpoet.FSImporter{Fs: lib},
+			&jpoet.FSImporter{Fs: imports.Fs},
 			&jsonnet.MemoryImporter{Data: map[string]jsonnet.Contents{
 				"input/lib.libsonnet": jsonnet.MakeContents(string(mainCode)),
 				"input/pkg.libsonnet": jsonnet.MakeContents(string(pkgCode)),

@@ -1,4 +1,4 @@
-package jsonnext
+package jpoet
 
 import (
 	"fmt"
