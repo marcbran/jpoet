@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/go-jsonnet"
-	"github.com/marcbran/jpoet/pkg/jsonnext"
+	"github.com/marcbran/jpoet/pkg/jpoet"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -81,9 +81,9 @@ func RunDir(dirname string) (*Run, error) {
 
 func RunFile(filename string) (*Run, error) {
 	vm := jsonnet.MakeVM()
-	vm.Importer(jsonnext.CompoundImporter{
+	vm.Importer(jpoet.CompoundImporter{
 		Importers: []jsonnet.Importer{
-			&jsonnext.FSImporter{Fs: lib},
+			&jpoet.FSImporter{Fs: lib},
 			&jsonnet.FileImporter{},
 		},
 	})
