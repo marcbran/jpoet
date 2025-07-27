@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"github.com/marcbran/devsonnet/internal/pkg"
+	"github.com/marcbran/jpoet/internal/pkg"
 	"github.com/spf13/cobra"
 	"path/filepath"
 )

@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/marcbran/devsonnet/internal/terminal"
+	"github.com/marcbran/jpoet/internal/terminal"
 	"io"
 	"os"
 	"path"

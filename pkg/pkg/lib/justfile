@@ -1,10 +1,10 @@
 set fallback := true
 
 test:
-    @devsonnet test
+    @jpoet test
 
 build: test
-    @devsonnet pkg build
+    @jpoet pkg build
 
 push: build
-    @devsonnet pkg push
+    @jpoet pkg push

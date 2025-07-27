@@ -4,9 +4,9 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
-	"github.com/marcbran/devsonnet/internal/pkg/lib/imports"
 	"github.com/marcbran/gensonnet/pkg/gensonnet"
 	"github.com/marcbran/gensonnet/pkg/gensonnet/config"
+	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
 	"os"
 )
 
@@ -19,7 +19,7 @@ func manifestRepo(ctx context.Context, files map[string]string) (string, error) 
 		return "", err
 	}
 
-	buildDir, err := os.MkdirTemp("", "devsonnet-*")
+	buildDir, err := os.MkdirTemp("", "jpoet-*")
 	if err != nil {
 		return "", err
 	}

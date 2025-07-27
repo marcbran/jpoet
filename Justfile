@@ -3,8 +3,8 @@ test-jsonnet:
     #!/usr/bin/env bash
     set -eu
 
-    devsonnet test ./internal
-    devsonnet test ./pkg
+    jpoet test ./internal
+    jpoet test ./pkg
 
 test-go:
     #!/usr/bin/env bash

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/google/go-jsonnet"
-	"github.com/marcbran/devsonnet/internal/pkg/lib/imports"
-	"github.com/marcbran/devsonnet/pkg/jsonnext"
+	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
+	"github.com/marcbran/jpoet/pkg/jsonnext"
 	"os"
 	"path/filepath"
 )

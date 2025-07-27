@@ -1,4 +1,4 @@
-# devsonnet
+# jpoet
 
 A Swiss Army knife of small, focused tools for working with [Jsonnet](https://jsonnet.org/).
 Each one handles a single task, mostly aimed at making CI workflows or local development easier.
@@ -11,13 +11,13 @@ Available tools:
 
 ## Installation
 
-To install devsonnet, first ensure you have Go installed on your system. Then, run:
+To install jpoet, first ensure you have Go installed on your system. Then, run:
 
 ```shell
-go install github.com/marcbran/devsonnet@latest
+go install github.com/marcbran/jpoet@latest
 ```
 
-This command will fetch and install the latest version of devsonnet.
+This command will fetch and install the latest version of jpoet.
 
 ## Tools
 
@@ -42,13 +42,13 @@ This test tool is just a Go-based version of those scripts — built to make thi
 3. Run the test command.
    ```shell
    # Runs the tests in the current folder
-   $ devsonnet test
+   $ jpoet test
    
    # Runs the tests in the specified folder
-   $ devsonnet test ./examples/tests
+   $ jpoet test ./examples/tests
    
    # Runs the tests with JSON output
-   $ devsonnet test --json
+   $ jpoet test --json
    ```
    
    If all the tests are passing, the test command exits with `0` and just outputs the number of passed tests:
@@ -94,4 +94,4 @@ This test tool is just a Go-based version of those scripts — built to make thi
 
 ## License
 
-devsonnet is licensed under the Apache License 2.0. See the [LICENSE](./LICENSE) file for details.
+jpoet is licensed under the Apache License 2.0. See the [LICENSE](./LICENSE) file for details.

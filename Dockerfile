@@ -1,3 +1,3 @@
 FROM scratch
-ENTRYPOINT ["/devsonnet"]
-COPY devsonnet /
+ENTRYPOINT ["/jpoet"]
+COPY jpoet /

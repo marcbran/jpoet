@@ -6,7 +6,7 @@ it:
         if [ -d "$example" ] && [ -f "${example}main.libsonnet" ]; then
             echo "$example"
             rm -rf "${example}/actual"
-            ../../dist/devsonnet build -b "actual" "${example}"
+            ../../dist/jpoet build -b "actual" "${example}"
 
             # Compare all files in expected folder with corresponding files in actual folder
             if [ -d "${example}expected" ]; then

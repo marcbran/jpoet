@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"github.com/marcbran/devsonnet/internal/repo"
+	"github.com/marcbran/jpoet/internal/repo"
 	"github.com/spf13/cobra"
 )
 

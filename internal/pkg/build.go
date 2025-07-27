@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
-	"github.com/marcbran/devsonnet/internal/pkg/lib/imports"
 	"github.com/marcbran/gensonnet/pkg/gensonnet"
+	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
 )
 
 func Build(ctx context.Context, pkgDir, buildDir string) error {
