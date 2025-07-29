@@ -16,9 +16,6 @@ import (
 
 func Build(ctx context.Context, pkgDir, buildDir string) error {
 	mainFile := filepath.Join(pkgDir, "main.libsonnet")
-	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
-	examplesFile := filepath.Join(pkgDir, "examples.libsonnet")
-
 	_, err := os.Stat(mainFile)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -31,6 +28,7 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		return err
 	}
 
+	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
 	_, err = os.Stat(pkgFile)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -43,6 +41,7 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		return err
 	}
 
+	examplesFile := filepath.Join(pkgDir, "examples.libsonnet")
 	examplesCode := []byte("{}")
 	_, err = os.Stat(examplesFile)
 	if err != nil {

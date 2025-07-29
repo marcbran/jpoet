@@ -1,5 +1,5 @@
 local ex = import './lib.libsonnet';
-local p = import 'jsonnet-pkg/main.libsonnet';
+local p = import 'pkg/main.libsonnet';
 
 p.ex({
 }, {

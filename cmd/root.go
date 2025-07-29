@@ -16,6 +16,8 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(pkg.Cmd)
 	rootCmd.AddCommand(repo.Cmd)
 }

@@ -1,4 +1,4 @@
-local p = import 'jsonnet-pkg/main.libsonnet';
+local p = import 'pkg/main.libsonnet';
 
 p.pkg({
   source: 'https://github.com/marcbran/jpoet/tree/main/pkg/pkg/lib',

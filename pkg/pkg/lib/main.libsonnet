@@ -11,6 +11,7 @@
     },
     source: std.get(pkg, 'source', null),
     description: description,
+    plugins: pkg.plugins,
     children: children,
   },
   desc(description, children={}): {
@@ -21,5 +22,13 @@
     examples: if std.type(examples) == 'array' then examples else [],
     example: if std.type(examples) == 'object' then examples else {},
     children: children,
+  },
+  plugin: {
+    github(repo, version): {
+      github: {
+        repo: repo,
+        version: version,
+      },
+    },
   },
 }

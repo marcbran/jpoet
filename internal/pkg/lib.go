@@ -31,6 +31,7 @@ type Config struct {
 	Description string      `json:"description"`
 	Coordinates Coordinates `json:"coordinates"`
 	Usage       Usage       `json:"usage"`
+	Plugins     []Plugin    `json:"plugins"`
 }
 
 type Coordinates struct {
@@ -44,22 +45,31 @@ type Usage struct {
 	Target string `json:"target"`
 }
 
+type Plugin struct {
+	Github *GithubPlugin `json:"github"`
+}
+
+type GithubPlugin struct {
+	Repo    string `json:"repo"`
+	Version string `json:"version"`
+}
+
 func ResolvePkgConfig(pkgDir string) (Config, error) {
 	mainFile := filepath.Join(pkgDir, "main.libsonnet")
-	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
-
+	mainCode := []byte("{}")
 	_, err := os.Stat(mainFile)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return Config{}, err
 		}
-		return Config{}, errors.New("main.libsonnet not found")
-	}
-	mainCode, err := os.ReadFile(mainFile)
-	if err != nil {
-		return Config{}, err
+	} else {
+		mainCode, err = os.ReadFile(mainFile)
+		if err != nil {
+			return Config{}, err
+		}
 	}
 
+	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
 	_, err = os.Stat(pkgFile)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {

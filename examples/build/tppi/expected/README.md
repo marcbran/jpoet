@@ -2,7 +2,7 @@
 
 > Test project, please ignore.
 
-- [Source Code](https://github.com/marcbran/jpoet/tree/main/examples/pkg/tppi): Original source code
+- [Source Code](https://github.com/marcbran/jpoet/tree/main/examples/build/tppi): Original source code
 
 - [Inlined Code](https://github.com/marcbran/jsonnet/blob/tppi/tppi/main.libsonnet): Inlined code published for usage in other projects
 

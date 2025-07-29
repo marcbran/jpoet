@@ -1,37 +1,57 @@
 package plugin
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"net/rpc"
-	"os"
+	"github.com/marcbran/jpoet/internal/plugin/proto"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type Client struct {
-	name   string
-	path   string
-	logger hclog.Logger
+	name    string
+	client  *plugin.Client
+	invoker Invoker
 }
 
-func NewClient(
-	dir, name string,
-) *Client {
-	logger := hclog.New(&hclog.LoggerOptions{
-		Name:   "plugin",
-		Output: os.Stdout,
-		Level:  hclog.Debug,
+func NewClient(path string) (*Client, error) {
+	base := filepath.Base(path)
+	if !strings.HasPrefix(base, "jsonnet-plugin-") {
+		return nil, fmt.Errorf("plugin path does not start with jsonnet-plugin")
+	}
+	name := strings.TrimPrefix(base, "jsonnet-plugin-")
+
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig: handshakeConfig,
+		Plugins: map[string]plugin.Plugin{
+			"invoker": &grpcPlugin{},
+		},
+		Cmd:              exec.Command(path),
+		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		Logger:           newLogger(),
 	})
 
-	return &Client{
-		name:   name,
-		path:   filepath.Join(dir, ".jpoet", name, "plugin"),
-		logger: logger,
+	rpcClient, err := client.Client()
+	if err != nil {
+		return nil, err
 	}
+
+	raw, err := rpcClient.Dispense("invoker")
+	if err != nil {
+		return nil, err
+	}
+	invoker := raw.(Invoker)
+
+	return &Client{
+		name:    name,
+		client:  client,
+		invoker: invoker,
+	}, nil
 }
 
 func (c Client) InvokeFunction() *jsonnet.NativeFunction {
@@ -50,48 +70,36 @@ func (c Client) InvokeFunction() *jsonnet.NativeFunction {
 			if !ok {
 				return nil, fmt.Errorf("args must be an array")
 			}
-			return c.Invoke(funcName, args)
+			return c.invoker.Invoke(funcName, args)
 		},
 	}
 }
 
-func (c Client) Invoke(funcName string, args []any) (any, error) {
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		Plugins: map[string]plugin.Plugin{
-			"invoker": &Plugin{},
-		},
-		Cmd:    exec.Command(c.path),
-		Logger: c.logger,
-	})
-	defer client.Kill()
+func (c Client) Close() error {
+	c.client.Kill()
+	return nil
+}
 
-	rpcClient, err := client.Client()
+type grpcClientInvoker struct {
+	client proto.InvokerClient
+}
+
+func (c grpcClientInvoker) Invoke(funcName string, args []any) (any, error) {
+	b, err := json.Marshal(args)
 	if err != nil {
 		return nil, err
 	}
-
-	raw, err := rpcClient.Dispense("invoker")
-	if err != nil {
-		return nil, err
-	}
-	inv := raw.(Invoker)
-
-	return inv.Invoke(funcName, args)
-}
-
-type rpcClientInvoker struct {
-	client *rpc.Client
-}
-
-func (c *rpcClientInvoker) Invoke(funcName string, args []any) (any, error) {
-	var resp any
-	err := c.client.Call("Plugin.Invoke", InvokeArgs{
+	resp, err := c.client.Invoke(context.Background(), &proto.InvokeRequest{
 		FuncName: funcName,
-		Args:     args,
-	}, &resp)
+		Args:     b,
+	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return resp, nil
+	var res any
+	err = json.Unmarshal(resp.Value, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
