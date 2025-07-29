@@ -1,12 +1,12 @@
-local p = import 'jsonnet-pkg/main.libsonnet';
+local p = import 'pkg/main.libsonnet';
 
 p.pkg({
   repo: 'https://github.com/marcbran/jsonnet.git',
-  branch: 'nestedimport',
-  path: 'nestedimport',
-  target: 'ni',
+  branch: 'multiimport',
+  path: 'multiimport',
+  target: 'mi',
 }, |||
-  A nestedimport library.
+  A multiimport library.
 
   This will inline all the imports and create the readme.
 |||, {
@@ -18,6 +18,11 @@ p.pkg({
   test2: p.desc(
     |||
       Another test property.
+    |||,
+  ),
+  test3: p.desc(
+    |||
+      One more test property.
     |||,
   ),
 })

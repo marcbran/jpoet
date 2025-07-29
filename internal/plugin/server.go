@@ -1,29 +1,25 @@
 package plugin
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/google/go-jsonnet"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"os"
+	"github.com/marcbran/jpoet/internal/plugin/proto"
 	"sort"
 	"strings"
 )
 
 type Server struct {
 	functions []jsonnet.NativeFunction
-	logger    hclog.Logger
 }
 
-func NewServer(functions []jsonnet.NativeFunction) *Server {
-	logger := hclog.New(&hclog.LoggerOptions{
-		Level:      hclog.Trace,
-		Output:     os.Stderr,
-		JSONFormat: true,
-	})
+func NewServer(
+	functions []jsonnet.NativeFunction,
+) *Server {
 	return &Server{
 		functions: functions,
-		logger:    logger,
 	}
 }
 
@@ -31,36 +27,49 @@ func (s Server) Serve() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshakeConfig,
 		Plugins: map[string]plugin.Plugin{
-			"invoker": &Plugin{
-				Impl: newFunctionInvoker(s.functions, s.logger),
+			"invoker": &grpcPlugin{
+				Impl: newFunctionInvoker(s.functions),
 			},
 		},
-		Logger: s.logger,
+		GRPCServer: plugin.DefaultGRPCServer,
+		Logger:     newLogger(),
 	})
 }
 
-type rpcServerInvoker struct {
-	Impl Invoker
+type grpcServerInvoker struct {
+	proto.UnimplementedInvokerServer
+	impl Invoker
 }
 
-func (s *rpcServerInvoker) Invoke(args InvokeArgs, resp *any) error {
-	var err error
-	*resp, err = s.Impl.Invoke(args.FuncName, args.Args)
+func (s grpcServerInvoker) Invoke(
+	ctx context.Context,
+	request *proto.InvokeRequest,
+) (*proto.InvokeResponse, error) {
+	var args []any
+	err := json.Unmarshal(request.Args, &args)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	resp, err := s.impl.Invoke(request.FuncName, args)
+	if err != nil {
+		return nil, err
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.InvokeResponse{
+		Value: b,
+	}, nil
 }
 
 type functionInvoker struct {
 	functionNames string
 	functions     map[string]jsonnet.NativeFunction
-	logger        hclog.Logger
 }
 
 func newFunctionInvoker(
 	functions []jsonnet.NativeFunction,
-	logger hclog.Logger,
 ) *functionInvoker {
 	functionMap := make(map[string]jsonnet.NativeFunction)
 	var functionNames []string
@@ -72,7 +81,6 @@ func newFunctionInvoker(
 	return &functionInvoker{
 		functionNames: strings.Join(functionNames, ", "),
 		functions:     functionMap,
-		logger:        logger,
 	}
 }
 

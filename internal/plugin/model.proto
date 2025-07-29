@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package plugin;
+
+option go_package = "./proto";
+
+message InvokeRequest {
+    string funcName = 1;
+    bytes args = 2;
+}
+
+message InvokeResponse {
+    bytes value = 1;
+}
+
+service Invoker {
+    rpc Invoke(InvokeRequest) returns (InvokeResponse);
+}

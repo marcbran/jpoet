@@ -42,6 +42,7 @@ local merge(lib, pkg, examples) =
     coordinates: coordinates,
     usage: usage,
     source: source,
+    plugins: pkg.plugins,
     description: std.get(desc, 'description', ''),
     examples: if std.type(examples) == 'object' then std.get(examples, 'examples', []) else [],
     example: if std.type(examples) == 'object' then std.get(examples, 'example', {}) else {},
