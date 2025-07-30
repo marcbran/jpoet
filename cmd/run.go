@@ -9,6 +9,8 @@ var runCmd = &cobra.Command{
 	Use:   "run [flags] filename",
 	Short: "Jsonnext run is a simple tool to run Jsonnet files",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true

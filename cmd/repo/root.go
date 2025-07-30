@@ -8,6 +8,8 @@ var Cmd = &cobra.Command{
 	Use:   "repo",
 	Short: "Subcommands for managing target repositories",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 }
 
 func init() {

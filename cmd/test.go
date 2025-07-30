@@ -12,6 +12,8 @@ var testCmd = &cobra.Command{
 	Use:   "test [flags] directory",
 	Short: "Jsonnet test is a simple tool to run tests for Jsonnet files",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true
