@@ -9,6 +9,8 @@ var indexCmd = &cobra.Command{
 	Use:   "index [flags] directory",
 	Short: "Indexes Jsonnet repository and updates index README",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true

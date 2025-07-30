@@ -9,6 +9,8 @@ var removeCmd = &cobra.Command{
 	Use:   "remove [flags] directory",
 	Short: "Removes Jsonnet packages from the target repository",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true

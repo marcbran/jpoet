@@ -10,6 +10,8 @@ var pushCmd = &cobra.Command{
 	Use:   "push [flags] directory",
 	Short: "Pushes Jsonnet packages to the target repository",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true

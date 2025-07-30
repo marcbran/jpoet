@@ -8,6 +8,8 @@ var Cmd = &cobra.Command{
 	Use:   "pkg",
 	Short: "Subcommands for building packages and managing them in the target repository",
 	Long:  ``,
+
+	DisableAutoGenTag: true,
 }
 
 func init() {
