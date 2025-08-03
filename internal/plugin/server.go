@@ -12,14 +12,18 @@ import (
 )
 
 type Server struct {
-	functions []jsonnet.NativeFunction
+	NamedInvoker
 }
 
 func NewServer(
+	name string,
 	functions []jsonnet.NativeFunction,
 ) *Server {
 	return &Server{
-		functions: functions,
+		NamedInvoker: NamedInvoker{
+			Invoker: newFunctionInvoker(functions),
+			name:    name,
+		},
 	}
 }
 
@@ -28,7 +32,7 @@ func (s Server) Serve() {
 		HandshakeConfig: handshakeConfig,
 		Plugins: map[string]plugin.Plugin{
 			"invoker": &grpcPlugin{
-				Impl: newFunctionInvoker(s.functions),
+				Impl: s,
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
@@ -84,7 +88,7 @@ func newFunctionInvoker(
 	}
 }
 
-func (i *functionInvoker) Invoke(funcName string, args []any) (any, error) {
+func (i functionInvoker) Invoke(funcName string, args []any) (any, error) {
 	f, ok := i.functions[funcName]
 	if !ok {
 		return "", fmt.Errorf("no such function: %s, available functions: %s", funcName, i.functionNames)

@@ -2,15 +2,15 @@ package pkg
 
 import (
 	"context"
-	"embed"
 	"errors"
-	"github.com/marcbran/gensonnet/pkg/gensonnet/config"
+	"github.com/marcbran/jpoet/pkg/jpoet"
+	"github.com/marcbran/jsonnet-plugin-jsonnet/jsonnet"
+	"github.com/marcbran/jsonnet-plugin-markdown/markdown"
 	"os"
 	"path/filepath"
 
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
-	"github.com/marcbran/gensonnet/pkg/gensonnet"
 	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
 )
 
@@ -55,32 +55,24 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		}
 	}
 
-	err = gensonnet.RenderWithConfig(ctx, config.Config{
-		Render: config.RenderConfig{
-			TargetDir: buildDir,
-			Lib: config.LibConfig{
-				ManifestCode: `
-					local lib = import 'input/main.libsonnet';
-					local libString = importstr 'input/main.libsonnet';
-					local pkg = import 'input/pkg.libsonnet';
-					local examples = import 'input/examples.libsonnet';
-					local examplesString = importstr 'input/examples.libsonnet';
-
-					local manifest = import 'lib/manifest.libsonnet';
-					manifest(lib, libString, pkg, examples, examplesString)
-				`,
-				Filesystems: []embed.FS{
-					lib,
-					imports.Fs,
-				},
-				Imports: map[string]string{
-					"input/main.libsonnet":     inlinedMainCode,
-					"input/pkg.libsonnet":      string(pkgCode),
-					"input/examples.libsonnet": string(examplesCode),
-				},
-			},
-		},
-	})
+	err = jpoet.NewEval().
+		FileImport([]string{}).
+		FSImport(lib).
+		FSImport(imports.Fs).
+		StringImport("input/main.libsonnet", inlinedMainCode).
+		StringImport("input/pkg.libsonnet", string(pkgCode)).
+		StringImport("input/examples.libsonnet", string(examplesCode)).
+		Plugin(markdown.Plugin()).
+		Plugin(jsonnet.Plugin()).
+		TLACode("lib", "import 'input/main.libsonnet'").
+		TLACode("libString", "importstr 'input/main.libsonnet'").
+		TLACode("pkg", "import 'input/pkg.libsonnet'").
+		TLACode("examples", "import 'input/examples.libsonnet'").
+		TLACode("examplesString", "importstr 'input/examples.libsonnet'").
+		FileInput("./lib/manifest.libsonnet").
+		Serialize(false).
+		DirectoryOutput(buildDir).
+		Eval()
 	if err != nil {
 		return err
 	}

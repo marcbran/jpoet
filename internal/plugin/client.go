@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-jsonnet"
-	"github.com/google/go-jsonnet/ast"
 	"github.com/hashicorp/go-plugin"
 	"github.com/marcbran/jpoet/internal/plugin/proto"
 	"os/exec"
@@ -14,9 +12,8 @@ import (
 )
 
 type Client struct {
-	name    string
-	client  *plugin.Client
-	invoker Invoker
+	NamedInvoker
+	client *plugin.Client
 }
 
 func NewClient(path string) (*Client, error) {
@@ -48,31 +45,12 @@ func NewClient(path string) (*Client, error) {
 	invoker := raw.(Invoker)
 
 	return &Client{
-		name:    name,
-		client:  client,
-		invoker: invoker,
-	}, nil
-}
-
-func (c Client) InvokeFunction() *jsonnet.NativeFunction {
-	return &jsonnet.NativeFunction{
-		Name:   fmt.Sprintf("invoke:%s", c.name),
-		Params: ast.Identifiers{"funcName", "args"},
-		Func: func(input []any) (any, error) {
-			if len(input) != 2 {
-				return nil, fmt.Errorf("funcName and args must be provided")
-			}
-			funcName, ok := input[0].(string)
-			if !ok {
-				return nil, fmt.Errorf("funcName must be a string")
-			}
-			args, ok := input[1].([]any)
-			if !ok {
-				return nil, fmt.Errorf("args must be an array")
-			}
-			return c.invoker.Invoke(funcName, args)
+		NamedInvoker: NamedInvoker{
+			Invoker: invoker,
+			name:    name,
 		},
-	}
+		client: client,
+	}, nil
 }
 
 func (c Client) Close() error {

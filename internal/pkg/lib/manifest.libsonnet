@@ -1,5 +1,5 @@
 local resolvePkgConfig = import './resolve_pkg_config.libsonnet';
-local g = import 'gensonnet/main.libsonnet';
+local j = import 'jsonnet/main.libsonnet';
 local md = import 'markdown/main.libsonnet';
 
 local invoke(func, params) =
@@ -159,10 +159,8 @@ local manifest(lib, libString, pkg, examples, examplesString) =
   local pkgConfig = resolvePkgConfig(lib, pkg, examples, examplesString);
   local doc = documentation(pkgConfig);
   {
-    directory: {
-      'main.libsonnet': g.parseJsonnet(libString),
-      'README.md': md.Document(doc),
-    },
+    'main.libsonnet': j.manifestJsonnet(j.parseJsonnet(libString)),
+    'README.md': md.manifestMarkdown(md.Document(doc)),
   };
 
 manifest

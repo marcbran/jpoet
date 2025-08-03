@@ -4,9 +4,10 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
-	"github.com/marcbran/gensonnet/pkg/gensonnet"
-	"github.com/marcbran/gensonnet/pkg/gensonnet/config"
 	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
+	"github.com/marcbran/jpoet/pkg/jpoet"
+	"github.com/marcbran/jsonnet-plugin-jsonnet/jsonnet"
+	"github.com/marcbran/jsonnet-plugin-markdown/markdown"
 	"os"
 )
 
@@ -24,26 +25,18 @@ func manifestRepo(ctx context.Context, files map[string]string) (string, error) 
 		return "", err
 	}
 
-	err = gensonnet.RenderWithConfig(ctx, config.Config{
-		Render: config.RenderConfig{
-			TargetDir: buildDir,
-			Lib: config.LibConfig{
-				ManifestCode: `
-					local files = import 'input/files.json';
-
-					local manifest = import 'lib/manifest.libsonnet';
-					manifest(files)
-				`,
-				Filesystems: []embed.FS{
-					lib,
-					imports.Fs,
-				},
-				Imports: map[string]string{
-					"input/files.json": string(b),
-				},
-			},
-		},
-	})
+	err = jpoet.NewEval().
+		FileImport([]string{}).
+		FSImport(lib).
+		FSImport(imports.Fs).
+		StringImport("input/files.json", string(b)).
+		Plugin(markdown.Plugin()).
+		Plugin(jsonnet.Plugin()).
+		TLACode("files", "import 'input/files.json'").
+		FileInput("./lib/manifest.libsonnet").
+		Serialize(false).
+		DirectoryOutput(buildDir).
+		Eval()
 	if err != nil {
 		return "", err
 	}

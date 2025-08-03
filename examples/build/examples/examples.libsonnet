@@ -1,4 +1,4 @@
-local ex = import './lib.libsonnet';
+local ex = import './main.libsonnet';
 local p = import 'pkg/main.libsonnet';
 
 p.ex({
@@ -16,9 +16,9 @@ p.ex({
       foo: 'bar',
     },
   }, {
-    name: 'Markdown format with gensonnet',
+    name: 'Markdown format with plugin',
     example:
-      local g = import 'gensonnet/main.libsonnet';
-      g.parseMarkdown('# %s' % [ex.test1.foo]),
+      local md = import 'markdown/main.libsonnet';
+      md.parseMarkdown('# %s' % [ex.test1.foo]),
   }]),
 })

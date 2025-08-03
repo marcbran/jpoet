@@ -2,9 +2,7 @@ package pkg
 
 import (
 	"embed"
-	"encoding/json"
 	"errors"
-	"github.com/google/go-jsonnet"
 	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
 	"github.com/marcbran/jpoet/pkg/jpoet"
 	"os"
@@ -13,18 +11,6 @@ import (
 
 //go:embed lib
 var lib embed.FS
-
-func vm() *jsonnet.VM {
-	vm := jsonnet.MakeVM()
-	vm.Importer(jpoet.CompoundImporter{
-		Importers: []jsonnet.Importer{
-			&jpoet.FSImporter{Fs: lib},
-			&jpoet.FSImporter{Fs: imports.Fs},
-			&jsonnet.FileImporter{},
-		},
-	})
-	return vm
-}
 
 type Config struct {
 	Source      string      `json:"source"`
@@ -82,28 +68,20 @@ func ResolvePkgConfig(pkgDir string) (Config, error) {
 		return Config{}, err
 	}
 
-	vm := vm()
-	vm.Importer(jpoet.CompoundImporter{
-		Importers: []jsonnet.Importer{
-			&jpoet.FSImporter{Fs: lib},
-			&jpoet.FSImporter{Fs: imports.Fs},
-			&jsonnet.MemoryImporter{Data: map[string]jsonnet.Contents{
-				"input/lib.libsonnet": jsonnet.MakeContents(string(mainCode)),
-				"input/pkg.libsonnet": jsonnet.MakeContents(string(pkgCode)),
-			}},
-		},
-	})
-	vm.TLACode("lib", "import 'input/lib.libsonnet'")
-	vm.TLACode("pkg", "import 'input/pkg.libsonnet'")
-	vm.TLACode("examples", "null")
-	vm.TLACode("examplesString", "null")
-
-	str, err := vm.EvaluateFile("./lib/resolve_pkg_config.libsonnet")
-	if err != nil {
-		return Config{}, err
-	}
 	var config Config
-	err = json.Unmarshal([]byte(str), &config)
+	err = jpoet.NewEval().
+		FSImport(lib).
+		FSImport(imports.Fs).
+		StringImport("input/main.libsonnet", string(mainCode)).
+		StringImport("input/pkg.libsonnet", string(pkgCode)).
+		TLACode("lib", "import 'input/main.libsonnet'").
+		TLACode("pkg", "import 'input/pkg.libsonnet'").
+		TLACode("examples", "null").
+		TLACode("examplesString", "null").
+		FileInput("./lib/resolve_pkg_config.libsonnet").
+		Serialize(false).
+		ValueOutput(&config).
+		Eval()
 	if err != nil {
 		return Config{}, err
 	}
