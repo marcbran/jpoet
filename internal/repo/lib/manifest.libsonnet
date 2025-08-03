@@ -1,8 +1,7 @@
-local g = import 'gensonnet/main.libsonnet';
 local md = import 'markdown/main.libsonnet';
 
 local pkg(name, contents, depth) =
-  local summary = g.parseMarkdown(contents)[1:4];
+  local summary = md.parseMarkdown(contents)[1:4];
   [
     [
       summary[0][0],
@@ -38,9 +37,7 @@ local index(files, depth=1) = md.Document([
 ]));
 
 local manifest(files) = {
-  directory: {
-    'README.md': index(files),
-  },
+  'README.md': md.manifestMarkdown(index(files)),
 };
 
 manifest

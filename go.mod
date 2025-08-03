@@ -10,7 +10,8 @@ require (
 	github.com/google/go-jsonnet v0.21.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.6.3
-	github.com/marcbran/gensonnet v0.1.1-0.20250719082240-e749ead57d9a
+	github.com/marcbran/jsonnet-plugin-markdown v0.1.1
+	github.com/marcbran/jsonnet-plugin-jsonnet v0.1.1
 	github.com/spf13/cobra v1.9.1
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
@@ -57,7 +58,7 @@ require (
 	github.com/teekennedy/goldmark-markdown v0.5.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/yuin/goldmark v1.7.12 // indirect
+	github.com/yuin/goldmark v1.7.13 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/net v0.42.0 // indirect

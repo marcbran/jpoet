@@ -99,6 +99,9 @@ github.com/marcbran/devsonnet v0.10.1-0.20250719075438-e66ded2bbeba h1:Z2FN/j6PC
 github.com/marcbran/devsonnet v0.10.1-0.20250719075438-e66ded2bbeba/go.mod h1:gsi6ltM+F1WrF6mBSlMG1sUVy8hA3xk3ms5IYAQoXMI=
 github.com/marcbran/gensonnet v0.1.1-0.20250719082240-e749ead57d9a h1:xG0C/GoxdEibfeKsBl286ybhuhSnv+6crD0tW13QT8s=
 github.com/marcbran/gensonnet v0.1.1-0.20250719082240-e749ead57d9a/go.mod h1:SKuSh02A7BILHBlNi0lzDwJVE/35SQxTpMLmxYTsNMo=
+github.com/marcbran/jsonnet-plugin-jsonnet v0.1.1/go.mod h1:6R9qP7CFC7MY6yRMr0j+BjOWlKL3xlmOvhFsCtWeAYk=
+github.com/marcbran/jsonnet-plugin-markdown v0.1.1 h1:vBUDav3COCqrHL6qa1jJ5eaCobX3UGMN1CHoTy4SnlA=
+github.com/marcbran/jsonnet-plugin-markdown v0.1.1/go.mod h1:6mSxALKafvdeQEvW+lbYS3Dv68nqwLV9ujDsWih7DqY=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
 github.com/mattn/go-colorable v0.1.12/go.mod h1:u5H1YNBxpqRaxsYJYSkiCWKzEfiAb1Gb520KVy5xxl4=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
@@ -156,8 +159,8 @@ github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e h1:JVG44RsyaB9T2KIHavMF/ppJZNG9ZpyihvCd0w101no=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e/go.mod h1:RbqR21r5mrJuqunuUZ/Dhy/avygyECGrLceyNeo4LiM=
-github.com/yuin/goldmark v1.7.12 h1:YwGP/rrea2/CnCtUHgjuolG/PnMxdQtPMO5PvaE2/nY=
-github.com/yuin/goldmark v1.7.12/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
+github.com/yuin/goldmark v1.7.13 h1:GPddIs617DnBLFFVJFgpo1aBfe/4xcvMc3SB5t/D0pA=
+github.com/yuin/goldmark v1.7.13/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
 go.abhg.dev/goldmark/toc v0.11.0 h1:IRixVy3/yVPKvFBc37EeBPi8XLTXrtH6BYaonSjkF8o=
 go.abhg.dev/goldmark/toc v0.11.0/go.mod h1:XMFIoI1Sm6dwF9vKzVDOYE/g1o5BmKXghLG8q/wJNww=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=

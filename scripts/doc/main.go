@@ -16,18 +16,22 @@ func main() {
 
 	err := generateMarkdown(cmd.Cmd, &buf)
 	if err != nil {
-		log.Fatalf("Error generating documentation: %v", err)
+		log.Fatalf("error generating documentation: %v", err)
 	}
 
 	f, err := os.Create("README.md")
 	if err != nil {
-		log.Fatalf("Error creating file: %v", err)
+		log.Fatalf("error creating file: %v", err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil {
+			err = cerr
+		}
+	}()
 
 	_, err = f.Write(buf.Bytes())
 	if err != nil {
-		log.Fatalf("Error writing to file: %v", err)
+		log.Fatalf("error writing to file: %v", err)
 	}
 
 	fmt.Println("Documentation written to README.md")

@@ -37,7 +37,7 @@ For detailed usage instructions, refer to the documentation of the respective co
 func init() {
 	Cmd.AddCommand(testCmd)
 	Cmd.AddCommand(installCmd)
-	Cmd.AddCommand(runCmd)
+	Cmd.AddCommand(evalCmd)
 	Cmd.AddCommand(pkg.Cmd)
 	Cmd.AddCommand(repo.Cmd)
 }

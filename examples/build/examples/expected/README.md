@@ -35,14 +35,14 @@ ex.test1
 
 #### Example
 
-**Running**
+##### Running
 
 ```jsonnet
-local ex = import 'test1/main.libsonnet';
+local ex = import 'examples/main.libsonnet';
 ex.test1
 ```
 
-**yields**
+##### yields
 
 ```json
 {
@@ -63,13 +63,13 @@ ex.test2()
 
 ##### Without parameters
 
-**Calling**
+###### Calling
 
 ```jsonnet
 ex.test2()
 ```
 
-**yields**
+###### yields
 
 ```json
 {
@@ -77,17 +77,17 @@ ex.test2()
 }
 ```
 
-##### Markdown format with gensonnet
+##### Markdown format with plugin
 
-**Running**
+###### Running
 
 ```jsonnet
-local ex = import 'test2/main.libsonnet';
-local g = import 'gensonnet/main.libsonnet';
-g.parseMarkdown('# %s' % [ex.test1.foo])
+local ex = import 'examples/main.libsonnet';
+local md = import 'markdown/main.libsonnet';
+md.parseMarkdown('# %s' % [ex.test1.foo])
 ```
 
-**yields**
+###### yields
 
 ```json
 [

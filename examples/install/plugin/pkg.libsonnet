@@ -7,7 +7,7 @@ p.pkg({
   path: 'plugin',
   target: 'p',
   plugins: [
-    p.plugin.github('marcbran/jsonnet-plugin-markdown', 'v0.1.0'),
+    p.plugin.github('marcbran/jsonnet-plugin-markdown', 'v0.1.1'),
   ],
 }, |||
   Test project, please ignore.
