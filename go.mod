@@ -10,7 +10,7 @@ require (
 	github.com/google/go-jsonnet v0.21.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.6.3
-	github.com/marcbran/jsonnet-plugin-jsonnet v0.2.0
+	github.com/marcbran/jsonnet-plugin-jsonnet v0.2.1
 	github.com/marcbran/jsonnet-plugin-markdown v0.2.0
 	github.com/spf13/cobra v1.9.1
 	google.golang.org/grpc v1.74.2
