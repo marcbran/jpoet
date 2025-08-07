@@ -14,7 +14,7 @@ require (
 	github.com/marcbran/jsonnet-plugin-markdown v0.2.0
 	github.com/spf13/cobra v1.9.1
 	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.7
 )
 
 require (
