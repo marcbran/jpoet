@@ -93,8 +93,8 @@ github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/marcbran/jsonnet-plugin-jsonnet v0.2.1 h1:UT3e9BhoXoFrsR/1zjB1qELxvAwHjdS+C6kfeMbJx68=
 github.com/marcbran/jsonnet-plugin-jsonnet v0.2.1/go.mod h1:1v65TTJ+1RDjY8pp7+/zvq0QEwVALEa5SNPYut2+mLE=
-github.com/marcbran/jsonnet-plugin-markdown v0.2.0 h1:r18xBZDcdJCmL87TrBh9EqKckg9t60wgHTPw4BCYSXQ=
-github.com/marcbran/jsonnet-plugin-markdown v0.2.0/go.mod h1:aJfLGNEAyzVmOS+1q+0/gPcmucOGeCnweoRRh2RJnV4=
+github.com/marcbran/jsonnet-plugin-markdown v0.2.1 h1:KSeW3wxYwemLOoSYoTNcU2QQCbCoFhzBiKAxK7bY9XQ=
+github.com/marcbran/jsonnet-plugin-markdown v0.2.1/go.mod h1:aJfLGNEAyzVmOS+1q+0/gPcmucOGeCnweoRRh2RJnV4=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
 github.com/mattn/go-colorable v0.1.12/go.mod h1:u5H1YNBxpqRaxsYJYSkiCWKzEfiAb1Gb520KVy5xxl4=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
