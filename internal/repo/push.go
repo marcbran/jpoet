@@ -55,7 +55,7 @@ func Push(ctx context.Context, pkgDir, buildDir string, authMethod transport.Aut
 		return err
 	}
 
-	err = checkoutBranch(ctx, r, w, branch)
+	err = checkoutBranch(ctx, r, w, branch, authMethod)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func Push(ctx context.Context, pkgDir, buildDir string, authMethod transport.Aut
 		return err
 	}
 
-	err = checkoutBranch(ctx, r, w, "main")
+	err = checkoutBranch(ctx, r, w, "main", authMethod)
 	if err != nil {
 		return err
 	}

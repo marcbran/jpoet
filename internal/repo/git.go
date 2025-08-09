@@ -64,7 +64,7 @@ func cloneAndCreateBranch(ctx context.Context, repo string, branch string, authM
 	return r, fs, err
 }
 
-func checkoutBranch(ctx context.Context, r *git.Repository, w *git.Worktree, branch string) error {
+func checkoutBranch(ctx context.Context, r *git.Repository, w *git.Worktree, branch string, authMethod transport.AuthMethod) error {
 	terminal.Infof("Checking out branch %s into work tree...", branch)
 	err := w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(branch),
@@ -74,6 +74,7 @@ func checkoutBranch(ctx context.Context, r *git.Repository, w *git.Worktree, bra
 			return err
 		}
 		err := r.FetchContext(ctx, &git.FetchOptions{
+			Auth:     authMethod,
 			RefSpecs: []config.RefSpec{config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branch, branch))},
 		})
 		if err != nil {
