@@ -24,10 +24,6 @@ local description(elem) = [
 ];
 
 local summarySection(elem) =
-  local httpRepo =
-    if std.endsWith(elem.coordinates.repo, '.git')
-    then elem.coordinates.repo[:std.length(elem.coordinates.repo) - 4]
-    else elem.coordinates.repo;
   [
     md.Blockquote([md.Paragraph(std.split(elem.description, '\n')[0])]),
     md.List('-', 0, (
@@ -42,7 +38,7 @@ local summarySection(elem) =
     ) + [
       md.ListItem([
         md.Paragraph([
-          md.Link('Inlined Code', '%s/blob/%s/%s/main.libsonnet' % [httpRepo, elem.coordinates.branch, elem.coordinates.path]),
+          md.Link('Inlined Code', '%s/blob/%s/%s/main.libsonnet' % [elem.coordinates.httpRepo, elem.coordinates.branch, elem.coordinates.path]),
           ': Inlined code published for usage in other projects',
         ]),
       ]),
@@ -66,7 +62,7 @@ local install(elem, depth) = [
   md.FencedCodeBlock(
     |||
       jb install %s/%s@%s
-    ||| % [elem.coordinates.repo, elem.coordinates.path, elem.coordinates.branch], language='shell'
+    ||| % [elem.coordinates.httpRepo, elem.coordinates.path, elem.coordinates.branch], language='shell'
   ),
   md.Paragraph('Then you can import it into your file in order to use it:'),
   md.FencedCodeBlock(

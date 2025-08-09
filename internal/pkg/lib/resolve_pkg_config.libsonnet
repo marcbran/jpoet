@@ -61,7 +61,17 @@ local merge(lib, pkg, examples) =
       for key in std.objectFields(desc.children)
     ],
   };
-  mergeRec(lib, pkg, examples, pkg.coordinates, pkg.usage, pkg.source) + { root: true };
+  local coordinates = pkg.coordinates {
+    local changeProtocol(repo) =
+      if std.startsWith(repo, 'git@')
+      then 'https://%s' % std.strReplace(repo[4:], ':', '/')
+      else repo,
+    local removeSuffix(repo) =
+      if std.endsWith(repo, '.git')
+      then repo[:std.length(repo) - 4] else repo,
+    httpRepo: changeProtocol(removeSuffix(super.repo)),
+  };
+  mergeRec(lib, pkg, examples, coordinates, pkg.usage, pkg.source) + { root: true };
 
 local resolvePkgConfig(lib, pkg, examples, examplesString) =
   local injectedExamples = injectExampleString(examples, examplesString);
