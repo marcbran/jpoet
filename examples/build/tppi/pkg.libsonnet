@@ -2,7 +2,7 @@ local p = import 'pkg/main.libsonnet';
 
 p.pkg({
   source: 'https://github.com/marcbran/jpoet/tree/main/examples/build/tppi',
-  repo: 'https://github.com/marcbran/jsonnet.git',
+  repo: 'git@github.com:marcbran/jsonnet.git',
   branch: 'tppi',
   path: 'tppi',
   target: 'tppi',
