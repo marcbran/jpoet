@@ -155,7 +155,7 @@ local manifest(lib, libString, pkg, examples, examplesString) =
   local pkgConfig = resolvePkgConfig(lib, pkg, examples, examplesString);
   local doc = documentation(pkgConfig);
   {
-    'main.libsonnet': j.manifestJsonnet(j.parseJsonnet(libString)),
+    'main.libsonnet': j.formatJsonnet(libString),
     'README.md': md.manifestMarkdown(md.Document(doc)),
   };
 
