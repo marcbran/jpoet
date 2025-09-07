@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/go-jsonnet"
-	"github.com/google/go-jsonnet/ast"
-	"github.com/marcbran/jpoet/internal/plugin"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/google/go-jsonnet"
+	"github.com/google/go-jsonnet/ast"
+	"github.com/marcbran/jpoet/internal/plugin"
 )
 
 type Eval struct {

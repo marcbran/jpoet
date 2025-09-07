@@ -1,11 +1,13 @@
 package jpoet
 
 import (
+	"errors"
 	"fmt"
-	"github.com/google/go-jsonnet"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/google/go-jsonnet"
 )
 
 type FSImporter struct {
@@ -93,11 +95,13 @@ type CompoundImporter struct {
 }
 
 func (c CompoundImporter) Import(importedFrom, importedPath string) (contents jsonnet.Contents, foundAt string, err error) {
+	var errs []error
 	for _, importer := range c.Importers {
 		contents, foundAt, err = importer.Import(importedFrom, importedPath)
 		if err == nil {
-			break
+			return contents, foundAt, nil
 		}
+		errs = append(errs, err)
 	}
-	return contents, foundAt, err
+	return contents, foundAt, errors.Join(errs...)
 }
