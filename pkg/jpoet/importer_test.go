@@ -1,11 +1,12 @@
 package jpoet
 
 import (
-	"github.com/google/go-jsonnet"
 	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/google/go-jsonnet"
 )
 
 func TestFSImporter_ImportSuccess(t *testing.T) {
