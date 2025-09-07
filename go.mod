@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/marcbran/jsonnet-plugin-jsonnet v0.2.1
 	github.com/marcbran/jsonnet-plugin-markdown v0.2.1
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.7
 )
@@ -50,7 +50,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/spf13/pflag v1.0.7 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/teekennedy/goldmark-markdown v0.5.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
