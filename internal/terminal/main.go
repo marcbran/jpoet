@@ -2,21 +2,28 @@ package terminal
 
 import (
 	"fmt"
-	"github.com/charmbracelet/lipgloss"
 	"os"
 )
 
-var info = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
-var warn = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-var fail = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-var success = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+var noColor bool
+
+func SetNoColor(v bool) {
+	noColor = v
+}
+
+func paint(seq, text string) string {
+	if noColor {
+		return text
+	}
+	return seq + text + "\033[0m"
+}
 
 func Space() {
 	fmt.Fprintln(os.Stderr, "")
 }
 
 func Info(text string) {
-	_, _ = fmt.Fprintln(os.Stderr, info.Render(text))
+	_, _ = fmt.Fprintln(os.Stderr, paint("\033[34m", text))
 }
 
 func Infof(text string, a ...any) {
@@ -24,7 +31,7 @@ func Infof(text string, a ...any) {
 }
 
 func Warn(text string) {
-	_, _ = fmt.Fprintln(os.Stderr, warn.Render(text))
+	_, _ = fmt.Fprintln(os.Stderr, paint("\033[33m", text))
 }
 
 func Warnf(text string, a ...any) {
@@ -32,7 +39,7 @@ func Warnf(text string, a ...any) {
 }
 
 func Fail(text string) {
-	_, _ = fmt.Fprintln(os.Stderr, fail.Render(text))
+	_, _ = fmt.Fprintln(os.Stderr, paint("\033[31m", text))
 }
 
 func Failf(text string, a ...any) {
@@ -40,7 +47,7 @@ func Failf(text string, a ...any) {
 }
 
 func Success(text string) {
-	_, _ = fmt.Fprintln(os.Stderr, success.Render(text))
+	_, _ = fmt.Fprintln(os.Stderr, paint("\033[32m", text))
 }
 
 func Successf(text string, a ...any) {

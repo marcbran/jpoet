@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/marcbran/jpoet/cmd/pkg"
 	"github.com/marcbran/jpoet/cmd/repo"
+	"github.com/marcbran/jpoet/internal/terminal"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -32,9 +33,17 @@ With Jpoet, developers can install Jsonnet plugins locally and evaluate configur
 For detailed usage instructions, refer to the documentation of the respective commands.`,
 
 	DisableAutoGenTag: true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		noColor, err := cmd.Root().PersistentFlags().GetBool("no-color")
+		if err != nil {
+			return
+		}
+		terminal.SetNoColor(noColor)
+	},
 }
 
 func init() {
+	Cmd.PersistentFlags().Bool("no-color", false, "Disable color in terminal output")
 	Cmd.AddCommand(testCmd)
 	Cmd.AddCommand(installCmd)
 	Cmd.AddCommand(evalCmd)
