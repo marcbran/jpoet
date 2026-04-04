@@ -5,7 +5,7 @@ go 1.24.4
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/go-git/go-billy/v5 v5.6.2
-	github.com/go-git/go-git/v5 v5.16.2
+	github.com/go-git/go-git/v5 v5.16.4
 	github.com/google/go-github/v74 v74.0.0
 	github.com/google/go-jsonnet v0.21.0
 	github.com/hashicorp/go-hclog v1.6.3
