@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"io"
+
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/hashicorp/go-plugin"
@@ -20,17 +22,24 @@ type Invoker interface {
 	Invoke(funcName string, args []any) (any, error)
 }
 
-type InvokeArgs struct {
-	FuncName string
-	Args     []any
-}
-
-type NamedInvoker struct {
+type InvokeCloser interface {
 	Invoker
-	name string
+	io.Closer
 }
 
-func (i NamedInvoker) Function() *jsonnet.NativeFunction {
+type Consumer struct {
+	name    string
+	invoker Invoker
+}
+
+func NewConsumer(name string, invoker Invoker) Consumer {
+	return Consumer{
+		name:    name,
+		invoker: invoker,
+	}
+}
+
+func (i Consumer) Function() *jsonnet.NativeFunction {
 	return &jsonnet.NativeFunction{
 		Name:   fmt.Sprintf("invoke:%s", i.name),
 		Params: ast.Identifiers{"funcName", "args"},
@@ -46,7 +55,7 @@ func (i NamedInvoker) Function() *jsonnet.NativeFunction {
 			if !ok {
 				return nil, fmt.Errorf("args must be an array")
 			}
-			return i.Invoke(funcName, args)
+			return i.invoker.Invoke(funcName, args)
 		},
 	}
 }
