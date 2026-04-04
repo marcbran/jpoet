@@ -11,10 +11,6 @@ import (
 	"github.com/marcbran/jpoet/internal/plugin"
 )
 
-type Invoker = plugin.Invoker
-
-type Middleware func(Invoker) Invoker
-
 type Plugin struct {
 	name       string
 	invoker    plugin.Invoker
@@ -41,6 +37,40 @@ func NewClientPlugin(name string, path string) (*Plugin, error) {
 	}, nil
 }
 
+type Invoker = plugin.Invoker
+
+type Middleware func(Invoker) Invoker
+
+func (p *Plugin) WithMiddleware(middleware ...Middleware) *Plugin {
+	return &Plugin{
+		name:       p.name,
+		invoker:    p.invoker,
+		closer:     p.closer,
+		middleware: append(p.middleware, middleware...),
+	}
+}
+
+type InvokeHook func(next Invoker, funcName string, args []any) (any, error)
+
+type hookInvoker struct {
+	next Invoker
+	hook InvokeHook
+}
+
+func (h hookInvoker) Invoke(funcName string, args []any) (any, error) {
+	return h.hook(h.next, funcName, args)
+}
+
+func HookMiddleware(hook InvokeHook) Middleware {
+	return func(next Invoker) Invoker {
+		return hookInvoker{next: next, hook: hook}
+	}
+}
+
+func (p *Plugin) WithHook(hook InvokeHook) *Plugin {
+	return p.WithMiddleware(HookMiddleware(hook))
+}
+
 func NewPluginsDir(pluginsDir string, middleware ...Middleware) ([]*Plugin, error) {
 	entries, err := readPluginEntries(pluginsDir)
 	if err != nil {
@@ -59,15 +89,6 @@ func NewPluginsDir(pluginsDir string, middleware ...Middleware) ([]*Plugin, erro
 		plugins = append(plugins, p)
 	}
 	return plugins, nil
-}
-
-func (p *Plugin) WithMiddleware(middleware ...Middleware) *Plugin {
-	return &Plugin{
-		name:       p.name,
-		invoker:    p.invoker,
-		closer:     p.closer,
-		middleware: append(p.middleware, middleware...),
-	}
 }
 
 func (p *Plugin) Serve() {
