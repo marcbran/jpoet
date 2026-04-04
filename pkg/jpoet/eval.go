@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
-	"github.com/marcbran/jpoet/internal/plugin"
 )
 
 type Eval struct {
@@ -168,37 +167,13 @@ func (e *Eval) NativeFunction(f *jsonnet.NativeFunction) *Eval {
 }
 
 func (e *Eval) Plugin(p *Plugin) *Eval {
+	e.closers = append(e.closers, p)
 	return e.NativeFunction(p.NativeFunction())
 }
 
-type CloserFunction interface {
-	io.Closer
-	Function() *jsonnet.NativeFunction
-}
-
-func (e *Eval) CloserFunction(f CloserFunction) *Eval {
-	if f == nil {
-		return e
-	}
-	e.closers = append(e.closers, f)
-	e.vm.NativeFunction(f.Function())
-	return e
-}
-
-func (e *Eval) PluginsDir(pluginsDir string) *Eval {
-	entries, err := readEntries(pluginsDir)
-	if err != nil {
-		e.errs = append(e.errs, err)
-		return e
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		client, err := plugin.NewClient(filepath.Join(pluginsDir, name, name))
-		if err != nil {
-			e.errs = append(e.errs, err)
-			continue
-		}
-		e = e.CloserFunction(client)
+func (e *Eval) PluginSet(plugins ...*Plugin) *Eval {
+	for _, p := range plugins {
+		e = e.Plugin(p)
 	}
 	return e
 }
@@ -311,21 +286,6 @@ func (e *Eval) Eval() error {
 		}
 	}
 	return e.error()
-}
-
-func readEntries(pluginsDir string) ([]os.DirEntry, error) {
-	_, err := os.Stat(pluginsDir)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		return nil, err
-	}
-	return entries, nil
 }
 
 func writeEntries(directory string, entries map[string]any, serialized bool) error {

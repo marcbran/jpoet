@@ -4,35 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/google/go-jsonnet"
 	"github.com/hashicorp/go-plugin"
 	"github.com/marcbran/jpoet/internal/plugin/proto"
-	"sort"
-	"strings"
 )
 
-type Server struct {
-	NamedInvoker
-}
-
-func NewServer(
-	name string,
-	functions []jsonnet.NativeFunction,
-) *Server {
-	return &Server{
-		NamedInvoker: NamedInvoker{
-			Invoker: newFunctionInvoker(functions),
-			name:    name,
-		},
-	}
-}
-
-func (s Server) Serve() {
+func (c Consumer) Serve() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshakeConfig,
 		Plugins: map[string]plugin.Plugin{
 			"invoker": &grpcPlugin{
-				Impl: s,
+				Impl: c.invoker,
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
@@ -67,14 +52,14 @@ func (s grpcServerInvoker) Invoke(
 	}, nil
 }
 
-type functionInvoker struct {
+type localInvoker struct {
 	functionNames string
 	functions     map[string]jsonnet.NativeFunction
 }
 
-func newFunctionInvoker(
+func NewLocalInvoker(
 	functions []jsonnet.NativeFunction,
-) *functionInvoker {
+) Invoker {
 	functionMap := make(map[string]jsonnet.NativeFunction)
 	var functionNames []string
 	for _, f := range functions {
@@ -82,13 +67,13 @@ func newFunctionInvoker(
 		functionMap[f.Name] = f
 	}
 	sort.Strings(functionNames)
-	return &functionInvoker{
+	return &localInvoker{
 		functionNames: strings.Join(functionNames, ", "),
 		functions:     functionMap,
 	}
 }
 
-func (i functionInvoker) Invoke(funcName string, args []any) (any, error) {
+func (i localInvoker) Invoke(funcName string, args []any) (any, error) {
 	f, ok := i.functions[funcName]
 	if !ok {
 		return "", fmt.Errorf("no such function: %s, available functions: %s", funcName, i.functionNames)

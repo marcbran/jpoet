@@ -4,26 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-plugin"
-	"github.com/marcbran/jpoet/internal/plugin/proto"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/hashicorp/go-plugin"
+	"github.com/marcbran/jpoet/internal/plugin/proto"
 )
 
-type Client struct {
-	NamedInvoker
-	client *plugin.Client
+type client struct {
+	invoker Invoker
+	client  *plugin.Client
 }
 
-func NewClient(path string) (*Client, error) {
+func NewClientInvoker(
+	name string,
+	path string,
+) (InvokeCloser, error) {
 	base := filepath.Base(path)
 	if !strings.HasPrefix(base, "jsonnet-plugin-") {
 		return nil, fmt.Errorf("plugin path does not start with jsonnet-plugin")
 	}
-	name := strings.TrimPrefix(base, "jsonnet-plugin-")
+	baseName := strings.TrimPrefix(base, "jsonnet-plugin-")
+	if baseName != name {
+		return nil, fmt.Errorf("plugin name does not match path")
+	}
 
-	client := plugin.NewClient(&plugin.ClientConfig{
+	pluginClient := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig: handshakeConfig,
 		Plugins: map[string]plugin.Plugin{
 			"invoker": &grpcPlugin{},
@@ -33,7 +40,7 @@ func NewClient(path string) (*Client, error) {
 		Logger:           newLogger(),
 	})
 
-	rpcClient, err := client.Client()
+	rpcClient, err := pluginClient.Client()
 	if err != nil {
 		return nil, err
 	}
@@ -44,16 +51,17 @@ func NewClient(path string) (*Client, error) {
 	}
 	invoker := raw.(Invoker)
 
-	return &Client{
-		NamedInvoker: NamedInvoker{
-			Invoker: invoker,
-			name:    name,
-		},
-		client: client,
+	return &client{
+		invoker: invoker,
+		client:  pluginClient,
 	}, nil
 }
 
-func (c Client) Close() error {
+func (c *client) Invoke(funcName string, args []any) (any, error) {
+	return c.invoker.Invoke(funcName, args)
+}
+
+func (c *client) Close() error {
 	c.client.Kill()
 	return nil
 }

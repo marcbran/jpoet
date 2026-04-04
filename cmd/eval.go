@@ -3,10 +3,11 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"github.com/marcbran/jpoet/pkg/jpoet"
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+
+	"github.com/marcbran/jpoet/pkg/jpoet"
+	"github.com/spf13/cobra"
 )
 
 var evalCmd = &cobra.Command{
@@ -55,8 +56,13 @@ var evalCmd = &cobra.Command{
 			input = jpoet.FileInput{Filename: filepath.Join(directory, arg)}
 		}
 
+		plugins, err := jpoet.NewPluginsDir(filepath.Join(directory, ".jpoet", "plugins"))
+		if err != nil {
+			return err
+		}
+
 		err = jpoet.NewEval().
-			PluginsDir(filepath.Join(directory, ".jpoet", "plugins")).
+			PluginSet(plugins...).
 			Input(input).
 			Serialize(!str).
 			Eval()
