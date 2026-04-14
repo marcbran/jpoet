@@ -49,11 +49,11 @@ var evalCmd = &cobra.Command{
 				code = true
 			}
 		}
-		var input jpoet.Input
+		var inputOpt jpoet.Option
 		if code {
-			input = jpoet.SnippetInput{Filename: "main.jsonnet", Snippet: arg}
+			inputOpt = jpoet.SnippetInput("main.jsonnet", arg)
 		} else {
-			input = jpoet.FileInput{Filename: filepath.Join(directory, arg)}
+			inputOpt = jpoet.FileInput(filepath.Join(directory, arg))
 		}
 
 		plugins, err := jpoet.NewPluginsDir(filepath.Join(directory, ".jpoet", "plugins"))
@@ -61,11 +61,11 @@ var evalCmd = &cobra.Command{
 			return err
 		}
 
-		err = jpoet.NewEval().
-			PluginSet(plugins...).
-			Input(input).
-			Serialize(!str).
-			Eval()
+		err = jpoet.Eval(
+			jpoet.WithPluginSet(plugins...),
+			inputOpt,
+			jpoet.Serialize(!str),
+		)
 		if err != nil {
 			return err
 		}

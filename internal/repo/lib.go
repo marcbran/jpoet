@@ -25,18 +25,18 @@ func manifestRepo(ctx context.Context, files map[string]string) (string, error) 
 		return "", err
 	}
 
-	err = jpoet.NewEval().
-		FileImport([]string{}).
-		FSImport(lib).
-		FSImport(imports.Fs).
-		StringImport("input/files.json", string(b)).
-		Plugin(markdown.Plugin()).
-		Plugin(jsonnet.Plugin()).
-		TLACode("files", "import 'input/files.json'").
-		FileInput("./lib/manifest.libsonnet").
-		Serialize(false).
-		DirectoryOutput(buildDir).
-		Eval()
+	err = jpoet.Eval(
+		jpoet.FileImport([]string{}),
+		jpoet.FSImport(lib),
+		jpoet.FSImport(imports.Fs),
+		jpoet.StringImport("input/files.json", string(b)),
+		jpoet.WithPlugin(markdown.Plugin()),
+		jpoet.WithPlugin(jsonnet.Plugin()),
+		jpoet.TLACode("files", "import 'input/files.json'"),
+		jpoet.FileInput("./lib/manifest.libsonnet"),
+		jpoet.Serialize(false),
+		jpoet.DirectoryOutput(buildDir),
+	)
 	if err != nil {
 		return "", err
 	}

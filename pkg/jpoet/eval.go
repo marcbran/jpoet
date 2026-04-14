@@ -14,14 +14,17 @@ import (
 	"github.com/google/go-jsonnet/ast"
 )
 
-type Eval struct {
-	vm       *jsonnet.VM
+type Option func(*evalConfig)
+
+type evalConfig struct {
+	vmOpts  []func(*jsonnet.VM)
+	closers []io.Closer
+
 	importer CompoundImporter
 	contents map[string]jsonnet.Contents
-	closers  []io.Closer
 
 	nodeInput    *ast.Node
-	snippetInput *SnippetInput
+	snippetInput *snippetInput
 	fileInput    *string
 
 	writerOutput    io.Writer
@@ -33,259 +36,243 @@ type Eval struct {
 	errs []error
 }
 
-func NewEval() *Eval {
-	vm := jsonnet.MakeVM()
-	importer := CompoundImporter{}
-	return &Eval{
-		vm:       vm,
-		importer: importer,
-		contents: make(map[string]jsonnet.Contents),
+type snippetInput struct {
+	filename string
+	snippet  string
+}
 
-		// Default: output to stdout
-		writerOutput: os.Stdout,
-
-		// Default: output serialized Json
+func newEvalConfig() *evalConfig {
+	return &evalConfig{
+		contents:         make(map[string]jsonnet.Contents),
+		writerOutput:     os.Stdout,
 		serializedFormat: true,
 	}
 }
 
-func (e *Eval) hasInput() bool {
-	return e.nodeInput != nil || e.snippetInput != nil || e.fileInput != nil
+func Eval(opts ...Option) error {
+	c := newEvalConfig()
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c.eval()
 }
 
-func (e *Eval) error() error {
-	if len(e.errs) == 0 {
+func TLAVar(key, val string) Option {
+	return func(c *evalConfig) {
+		c.vmOpts = append(c.vmOpts, func(vm *jsonnet.VM) { vm.TLAVar(key, val) })
+	}
+}
+
+func TLACode(key, val string) Option {
+	return func(c *evalConfig) {
+		c.vmOpts = append(c.vmOpts, func(vm *jsonnet.VM) { vm.TLACode(key, val) })
+	}
+}
+
+func TLANode(key string, node ast.Node) Option {
+	return func(c *evalConfig) {
+		c.vmOpts = append(c.vmOpts, func(vm *jsonnet.VM) { vm.TLANode(key, node) })
+	}
+}
+
+func NodeInput(node ast.Node) Option {
+	return func(c *evalConfig) {
+		c.nodeInput = &node
+		c.snippetInput = nil
+		c.fileInput = nil
+	}
+}
+
+func SnippetInput(filename, snippet string) Option {
+	return func(c *evalConfig) {
+		c.nodeInput = nil
+		c.snippetInput = &snippetInput{filename, snippet}
+		c.fileInput = nil
+	}
+}
+
+func FileInput(filename string) Option {
+	return func(c *evalConfig) {
+		c.nodeInput = nil
+		c.snippetInput = nil
+		c.fileInput = &filename
+	}
+}
+
+func Importer(i jsonnet.Importer) Option {
+	return func(c *evalConfig) {
+		c.importer.Importers = append(c.importer.Importers, i)
+	}
+}
+
+func FileImport(jpaths []string) Option {
+	return Importer(&jsonnet.FileImporter{JPaths: jpaths})
+}
+
+func FSImport(f fs.FS) Option {
+	return Importer(&FSImporter{Fs: f})
+}
+
+func StringImport(filename, value string) Option {
+	return func(c *evalConfig) {
+		c.contents[filename] = jsonnet.MakeContents(value)
+	}
+}
+
+func WithNativeFunction(f *jsonnet.NativeFunction) Option {
+	return func(c *evalConfig) {
+		if f == nil {
+			return
+		}
+		c.vmOpts = append(c.vmOpts, func(vm *jsonnet.VM) { vm.NativeFunction(f) })
+	}
+}
+
+func WithPlugin(p *Plugin) Option {
+	return func(c *evalConfig) {
+		c.closers = append(c.closers, p)
+		WithNativeFunction(p.NativeFunction())(c)
+	}
+}
+
+func WithPluginSet(plugins ...*Plugin) Option {
+	return func(c *evalConfig) {
+		for _, p := range plugins {
+			WithPlugin(p)(c)
+		}
+	}
+}
+
+func WriterOutput(w io.Writer) Option {
+	return func(c *evalConfig) {
+		c.writerOutput = w
+		c.valueOutput = nil
+		c.directoryOutput = ""
+	}
+}
+
+func ValueOutput(out any) Option {
+	return func(c *evalConfig) {
+		c.writerOutput = nil
+		c.valueOutput = out
+		c.directoryOutput = ""
+	}
+}
+
+func DirectoryOutput(dir string) Option {
+	return func(c *evalConfig) {
+		c.writerOutput = nil
+		c.valueOutput = nil
+		c.directoryOutput = dir
+	}
+}
+
+func Serialize(s bool) Option {
+	return func(c *evalConfig) {
+		c.serializedFormat = s
+	}
+}
+
+func (c *evalConfig) hasInput() bool {
+	return c.nodeInput != nil || c.snippetInput != nil || c.fileInput != nil
+}
+
+func (c *evalConfig) error() error {
+	if len(c.errs) == 0 {
 		return nil
 	}
-	if len(e.errs) == 1 {
-		return fmt.Errorf("failed to evaluate Jsonnet: %w", e.errs[0])
+	if len(c.errs) == 1 {
+		return fmt.Errorf("failed to evaluate Jsonnet: %w", c.errs[0])
 	}
-	return fmt.Errorf("failed to evalute Jsonnet: %s", e.errs)
+	return fmt.Errorf("failed to evaluate Jsonnet: %s", c.errs)
 }
 
-func (e *Eval) TLAVar(key string, val string) *Eval {
-	e.vm.TLAVar(key, val)
-	return e
-}
-
-func (e *Eval) TLACode(key string, val string) *Eval {
-	e.vm.TLACode(key, val)
-	return e
-}
-
-func (e *Eval) TLANode(key string, node ast.Node) *Eval {
-	e.vm.TLANode(key, node)
-	return e
-}
-
-type Input interface {
-	Input() Input
-}
-
-type NodeInput struct {
-	Node ast.Node
-}
-
-func (i NodeInput) Input() Input {
-	return i
-}
-
-type SnippetInput struct {
-	Filename string
-	Snippet  string
-}
-
-func (i SnippetInput) Input() Input {
-	return i
-}
-
-type FileInput struct {
-	Filename string
-}
-
-func (i FileInput) Input() Input {
-	return i
-}
-
-func (e *Eval) Input(input Input) *Eval {
-	switch i := input.(type) {
-	case NodeInput:
-		return e.NodeInput(i.Node)
-	case SnippetInput:
-		return e.SnippetInput(i.Filename, i.Snippet)
-	case FileInput:
-		return e.FileInput(i.Filename)
-	}
-	return e
-}
-
-func (e *Eval) NodeInput(node ast.Node) *Eval {
-	e.nodeInput = &node
-	e.snippetInput = nil
-	e.fileInput = nil
-	return e
-}
-
-func (e *Eval) SnippetInput(filename string, snippet string) *Eval {
-	e.nodeInput = nil
-	e.snippetInput = &SnippetInput{filename, snippet}
-	e.fileInput = nil
-	return e
-}
-
-func (e *Eval) FileInput(filename string) *Eval {
-	e.nodeInput = nil
-	e.snippetInput = nil
-	e.fileInput = &filename
-	return e
-}
-
-func (e *Eval) Importer(i jsonnet.Importer) *Eval {
-	e.importer.Importers = append(e.importer.Importers, i)
-	return e
-}
-
-func (e *Eval) FileImport(jpaths []string) *Eval {
-	return e.Importer(&jsonnet.FileImporter{JPaths: jpaths})
-}
-
-func (e *Eval) FSImport(f fs.FS) *Eval {
-	return e.Importer(&FSImporter{Fs: f})
-}
-
-func (e *Eval) StringImport(filename string, value string) *Eval {
-	e.contents[filename] = jsonnet.MakeContents(value)
-	return e
-}
-
-func (e *Eval) NativeFunction(f *jsonnet.NativeFunction) *Eval {
-	if f == nil {
-		return e
-	}
-	e.vm.NativeFunction(f)
-	return e
-}
-
-func (e *Eval) Plugin(p *Plugin) *Eval {
-	e.closers = append(e.closers, p)
-	return e.NativeFunction(p.NativeFunction())
-}
-
-func (e *Eval) PluginSet(plugins ...*Plugin) *Eval {
-	for _, p := range plugins {
-		e = e.Plugin(p)
-	}
-	return e
-}
-
-func (e *Eval) WriterOutput(w io.Writer) *Eval {
-	e.writerOutput = w
-	e.valueOutput = nil
-	e.directoryOutput = ""
-	return e
-}
-
-func (e *Eval) ValueOutput(out any) *Eval {
-	e.writerOutput = nil
-	e.valueOutput = out
-	e.directoryOutput = ""
-	return e
-}
-
-func (e *Eval) DirectoryOutput(dir string) *Eval {
-	e.writerOutput = nil
-	e.valueOutput = nil
-	e.directoryOutput = dir
-	return e
-}
-
-func (e *Eval) Serialize(s bool) *Eval {
-	e.serializedFormat = s
-	return e
-}
-
-func (e *Eval) Eval() error {
+func (c *evalConfig) eval() error {
 	defer func() {
-		for _, closer := range e.closers {
+		for _, closer := range c.closers {
 			err := closer.Close()
 			if err != nil {
-				e.errs = append(e.errs, err)
+				c.errs = append(c.errs, err)
 			}
 		}
 	}()
-	if !e.hasInput() {
-		e.errs = append(e.errs, errors.New("missing input"))
-		return e.error()
+	if !c.hasInput() {
+		c.errs = append(c.errs, errors.New("missing input"))
+		return c.error()
 	}
-	if len(e.contents) > 0 {
-		e.Importer(&MemoryImporter{
-			Data: e.contents,
+	if len(c.contents) > 0 {
+		c.importer.Importers = append(c.importer.Importers, &MemoryImporter{
+			Data: c.contents,
 		})
 	}
-	if len(e.importer.Importers) > 0 {
-		e.vm.Importer(e.importer)
+	vm := jsonnet.MakeVM()
+	for _, opt := range c.vmOpts {
+		opt(vm)
+	}
+	if len(c.importer.Importers) > 0 {
+		vm.Importer(c.importer)
 	}
 
 	var serializedJson string
 	var err error
-	if e.nodeInput != nil {
-		serializedJson, err = e.vm.Evaluate(*e.nodeInput)
+	if c.nodeInput != nil {
+		serializedJson, err = vm.Evaluate(*c.nodeInput)
 		if err != nil {
-			e.errs = append(e.errs, err)
-			return e.error()
+			c.errs = append(c.errs, err)
+			return c.error()
 		}
-	} else if e.snippetInput != nil {
-		serializedJson, err = e.vm.EvaluateAnonymousSnippet(e.snippetInput.Filename, e.snippetInput.Snippet)
+	} else if c.snippetInput != nil {
+		serializedJson, err = vm.EvaluateAnonymousSnippet(c.snippetInput.filename, c.snippetInput.snippet)
 		if err != nil {
-			e.errs = append(e.errs, err)
-			return e.error()
+			c.errs = append(c.errs, err)
+			return c.error()
 		}
-	} else if e.fileInput != nil {
-		serializedJson, err = e.vm.EvaluateFile(*e.fileInput)
+	} else if c.fileInput != nil {
+		serializedJson, err = vm.EvaluateFile(*c.fileInput)
 		if err != nil {
-			e.errs = append(e.errs, err)
-			return e.error()
+			c.errs = append(c.errs, err)
+			return c.error()
 		}
 	}
 
-	if e.writerOutput != nil {
+	if c.writerOutput != nil {
 		output := serializedJson
-		if !e.serializedFormat {
+		if !c.serializedFormat {
 			err := json.Unmarshal([]byte(serializedJson), &output)
 			if err != nil {
-				e.errs = append(e.errs, err)
-				return e.error()
+				c.errs = append(c.errs, err)
+				return c.error()
 			}
 		}
-		_, err := e.writerOutput.Write([]byte(output))
+		_, err := c.writerOutput.Write([]byte(output))
 		if err != nil {
-			e.errs = append(e.errs, err)
-			return e.error()
+			c.errs = append(c.errs, err)
+			return c.error()
 		}
-	} else if e.valueOutput != nil {
-		if e.serializedFormat {
-			e.valueOutput = serializedJson
+	} else if c.valueOutput != nil {
+		if c.serializedFormat {
+			c.valueOutput = serializedJson
 		} else {
-			err := json.Unmarshal([]byte(serializedJson), e.valueOutput)
+			err := json.Unmarshal([]byte(serializedJson), c.valueOutput)
 			if err != nil {
-				e.errs = append(e.errs, err)
-				return e.error()
+				c.errs = append(c.errs, err)
+				return c.error()
 			}
 		}
-	} else if e.directoryOutput != "" {
+	} else if c.directoryOutput != "" {
 		var entries map[string]any
 		err = json.Unmarshal([]byte(serializedJson), &entries)
 		if err != nil {
-			e.errs = append(e.errs, err)
-			return e.error()
+			c.errs = append(c.errs, err)
+			return c.error()
 		}
-		err = writeEntries(e.directoryOutput, entries, e.serializedFormat)
+		err = writeEntries(c.directoryOutput, entries, c.serializedFormat)
 		if err != nil {
-			e.errs = append(e.errs, err)
-			return e.error()
+			c.errs = append(c.errs, err)
+			return c.error()
 		}
 	}
-	return e.error()
+	return c.error()
 }
 
 func writeEntries(directory string, entries map[string]any, serialized bool) error {

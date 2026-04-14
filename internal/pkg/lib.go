@@ -69,19 +69,19 @@ func ResolvePkgConfig(pkgDir string) (Config, error) {
 	}
 
 	var config Config
-	err = jpoet.NewEval().
-		FSImport(lib).
-		FSImport(imports.Fs).
-		StringImport("input/main.libsonnet", string(mainCode)).
-		StringImport("input/pkg.libsonnet", string(pkgCode)).
-		TLACode("lib", "import 'input/main.libsonnet'").
-		TLACode("pkg", "import 'input/pkg.libsonnet'").
-		TLACode("examples", "null").
-		TLACode("examplesString", "null").
-		FileInput("./lib/resolve_pkg_config.libsonnet").
-		Serialize(false).
-		ValueOutput(&config).
-		Eval()
+	err = jpoet.Eval(
+		jpoet.FSImport(lib),
+		jpoet.FSImport(imports.Fs),
+		jpoet.StringImport("input/main.libsonnet", string(mainCode)),
+		jpoet.StringImport("input/pkg.libsonnet", string(pkgCode)),
+		jpoet.TLACode("lib", "import 'input/main.libsonnet'"),
+		jpoet.TLACode("pkg", "import 'input/pkg.libsonnet'"),
+		jpoet.TLACode("examples", "null"),
+		jpoet.TLACode("examplesString", "null"),
+		jpoet.FileInput("./lib/resolve_pkg_config.libsonnet"),
+		jpoet.Serialize(false),
+		jpoet.ValueOutput(&config),
+	)
 	if err != nil {
 		return Config{}, err
 	}
