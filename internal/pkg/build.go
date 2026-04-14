@@ -55,24 +55,24 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		}
 	}
 
-	err = jpoet.NewEval().
-		FileImport([]string{}).
-		FSImport(lib).
-		FSImport(imports.Fs).
-		StringImport("input/main.libsonnet", inlinedMainCode).
-		StringImport("input/pkg.libsonnet", string(pkgCode)).
-		StringImport("input/examples.libsonnet", string(examplesCode)).
-		Plugin(markdown.Plugin()).
-		Plugin(jsonnet.Plugin()).
-		TLACode("lib", "import 'input/main.libsonnet'").
-		TLACode("libString", "importstr 'input/main.libsonnet'").
-		TLACode("pkg", "import 'input/pkg.libsonnet'").
-		TLACode("examples", "import 'input/examples.libsonnet'").
-		TLACode("examplesString", "importstr 'input/examples.libsonnet'").
-		FileInput("./lib/manifest.libsonnet").
-		Serialize(false).
-		DirectoryOutput(buildDir).
-		Eval()
+	err = jpoet.Eval(
+		jpoet.FileImport([]string{}),
+		jpoet.FSImport(lib),
+		jpoet.FSImport(imports.Fs),
+		jpoet.StringImport("input/main.libsonnet", inlinedMainCode),
+		jpoet.StringImport("input/pkg.libsonnet", string(pkgCode)),
+		jpoet.StringImport("input/examples.libsonnet", string(examplesCode)),
+		jpoet.WithPlugin(markdown.Plugin()),
+		jpoet.WithPlugin(jsonnet.Plugin()),
+		jpoet.TLACode("lib", "import 'input/main.libsonnet'"),
+		jpoet.TLACode("libString", "importstr 'input/main.libsonnet'"),
+		jpoet.TLACode("pkg", "import 'input/pkg.libsonnet'"),
+		jpoet.TLACode("examples", "import 'input/examples.libsonnet'"),
+		jpoet.TLACode("examplesString", "importstr 'input/examples.libsonnet'"),
+		jpoet.FileInput("./lib/manifest.libsonnet"),
+		jpoet.Serialize(false),
+		jpoet.DirectoryOutput(buildDir),
+	)
 	if err != nil {
 		return err
 	}
