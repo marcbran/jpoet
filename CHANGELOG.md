@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/marcbran/jpoet/compare/v0.16.0...v0.17.0) (2026-04-14)
+
+
+### Features
+
+* implement cache ([#99](https://github.com/marcbran/jpoet/issues/99)) ([41422ba](https://github.com/marcbran/jpoet/commit/41422bac4141b584cb92d6c1508bad93fc0fd884))
+* refactor config to use functional options ([#97](https://github.com/marcbran/jpoet/issues/97)) ([651e26f](https://github.com/marcbran/jpoet/commit/651e26f6f1f5cf65a9b1161e284795df92675663))
+
 ## [0.16.0](https://github.com/marcbran/jpoet/compare/v0.15.0...v0.16.0) (2026-04-04)
 
 
