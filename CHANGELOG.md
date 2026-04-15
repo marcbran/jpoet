@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/marcbran/jpoet/compare/v0.17.0...v0.17.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* release action ([#101](https://github.com/marcbran/jpoet/issues/101)) ([ac3bd05](https://github.com/marcbran/jpoet/commit/ac3bd050204a65ab28841a5c739165d13c292b68))
+
 ## [0.17.0](https://github.com/marcbran/jpoet/compare/v0.16.0...v0.17.0) (2026-04-14)
 
 
