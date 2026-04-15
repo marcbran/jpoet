@@ -28,12 +28,37 @@ archives:
       - goos: windows
         formats: [zip]
 
+checksum:
+  name_template: "checksums.txt"
+
 dockers:
   - image_templates:
       - "ghcr.io/marcbran/jpoet:v{{ .Major }}"
       - "ghcr.io/marcbran/jpoet:v{{ .Major }}.{{ .Minor }}"
       - "ghcr.io/marcbran/jpoet:{{ .Tag }}"
       - "ghcr.io/marcbran/jpoet:latest"
+
+docker_digest:
+  name_template: "digests.txt"
+
+source:
+  enabled: true
+
+sboms:
+  - artifacts: archive
+  - id: source
+    artifacts: source
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
 
 changelog:
   sort: asc
