@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/marcbran/jpoet/compare/v0.17.1...v0.18.0) (2026-05-02)
+
+
+### Features
+
+* eval to directory ([#108](https://github.com/marcbran/jpoet/issues/108)) ([c36892c](https://github.com/marcbran/jpoet/commit/c36892c2e6be991d9b63077a4ced42555ec327ac))
+
 ## [0.17.1](https://github.com/marcbran/jpoet/compare/v0.17.0...v0.17.1) (2026-04-15)
 
 
