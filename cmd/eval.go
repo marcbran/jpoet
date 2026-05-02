@@ -32,6 +32,10 @@ var evalCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		outputDirectory, err := cmd.Flags().GetString("output-directory")
+		if err != nil {
+			return err
+		}
 
 		arg := ""
 		if len(args) > 0 {
@@ -61,10 +65,16 @@ var evalCmd = &cobra.Command{
 			return err
 		}
 
+		outputOpt := jpoet.WriterOutput(os.Stdout)
+		if outputDirectory != "" {
+			outputOpt = jpoet.DirectoryOutput(outputDirectory)
+		}
+
 		err = jpoet.Eval(
 			jpoet.WithPluginSet(plugins...),
 			inputOpt,
 			jpoet.Serialize(!str),
+			outputOpt,
 		)
 		if err != nil {
 			return err
@@ -77,4 +87,5 @@ func init() {
 	evalCmd.Flags().StringP("directory", "d", ".", "Context directory for the evaluation")
 	evalCmd.Flags().BoolP("code", "c", false, "Treat provided input as code")
 	evalCmd.Flags().BoolP("string", "s", false, "Output raw string instead of Json serialization but fails if evaluated output is not a string")
+	evalCmd.Flags().StringP("output-directory", "o", "", "Write output files to this directory instead of stdout")
 }
