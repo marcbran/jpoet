@@ -12,7 +12,7 @@ require (
 	github.com/marcbran/jsonnet-plugin-jsonnet v0.3.0
 	github.com/marcbran/jsonnet-plugin-markdown v0.2.1
 	github.com/spf13/cobra v1.10.2
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.11
 )
 
