@@ -13,7 +13,7 @@ require (
 	github.com/marcbran/jsonnet-plugin-markdown v0.2.1
 	github.com/spf13/cobra v1.10.2
 	google.golang.org/grpc v1.83.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
