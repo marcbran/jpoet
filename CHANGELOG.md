@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/marcbran/jpoet/compare/v0.18.0...v0.19.0) (2026-08-15)
+
+
+### Features
+
+* external imports during build ([#143](https://github.com/marcbran/jpoet/issues/143)) ([a225959](https://github.com/marcbran/jpoet/commit/a225959b0f298a82daeb70d5cf57886632c2d0d8))
+
 ## [0.18.0](https://github.com/marcbran/jpoet/compare/v0.17.1...v0.18.0) (2026-08-15)
 
 
