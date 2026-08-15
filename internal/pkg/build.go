@@ -3,11 +3,12 @@ package pkg
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/marcbran/jpoet/pkg/jpoet"
 	"github.com/marcbran/jsonnet-plugin-jsonnet/jsonnet"
 	"github.com/marcbran/jsonnet-plugin-markdown/markdown"
-	"os"
-	"path/filepath"
 
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
@@ -108,24 +109,48 @@ func readInlineNode(filename string) (ast.Node, ast.Fodder, error) {
 }
 
 func inlineNode(node ast.Node, filename string) error {
-	if local, ok := node.(*ast.Local); ok {
-		if imp, ok := local.Binds[0].Body.(*ast.Import); ok {
-			impFilename, err := filepath.Abs(filepath.Join(filepath.Dir(filename), imp.File.Value))
+	switch n := node.(type) {
+	case *ast.Local:
+		for i := range n.Binds {
+			resolved, err := inlineValue(n.Binds[i].Body, filename)
 			if err != nil {
 				return err
 			}
-			impNode, _, err := readInlineNode(impFilename)
-			if err != nil {
-				return err
-			}
-			if nodeBase, ok := impNode.(*ast.Local); ok {
-				nodeBase.Fodder = []ast.FodderElement{
-					{Kind: ast.FodderLineEnd},
-				}
-			}
-			local.Binds[0].Body = impNode
+			n.Binds[i].Body = resolved
 		}
-		return inlineNode(local.Body, filename)
+		return inlineNode(n.Body, filename)
+	case *ast.Object:
+		for i := range n.Fields {
+			if n.Fields[i].Expr2 == nil {
+				continue
+			}
+			resolved, err := inlineValue(n.Fields[i].Expr2, filename)
+			if err != nil {
+				return err
+			}
+			n.Fields[i].Expr2 = resolved
+		}
 	}
 	return nil
+}
+
+func inlineValue(node ast.Node, filename string) (ast.Node, error) {
+	imp, ok := node.(*ast.Import)
+	if !ok {
+		return node, nil
+	}
+	impFilename, err := filepath.Abs(filepath.Join(filepath.Dir(filename), imp.File.Value))
+	if err != nil {
+		return nil, err
+	}
+	impNode, _, err := readInlineNode(impFilename)
+	if err != nil {
+		return nil, err
+	}
+	if nodeBase, ok := impNode.(*ast.Local); ok {
+		nodeBase.Fodder = []ast.FodderElement{
+			{Kind: ast.FodderLineEnd},
+		}
+	}
+	return impNode, nil
 }
