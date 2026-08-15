@@ -43,6 +43,7 @@ local merge(lib, pkg, examples) =
     usage: usage,
     source: source,
     plugins: pkg.plugins,
+    external: pkg.external,
     description: std.get(desc, 'description', ''),
     examples: if std.type(examples) == 'object' then std.get(examples, 'examples', []) else [],
     example: if std.type(examples) == 'object' then std.get(examples, 'example', {}) else {},
@@ -73,9 +74,9 @@ local merge(lib, pkg, examples) =
   };
   mergeRec(lib, pkg, examples, coordinates, pkg.usage, pkg.source) + { root: true };
 
-local resolvePkgConfig(lib, pkg, examples, examplesString) =
+local resolvePkgBundle(lib, pkg, examples, examplesString) =
   local injectedExamples = injectExampleString(examples, examplesString);
-  local pkgConfig = merge(lib, pkg, injectedExamples);
-  pkgConfig;
+  local bundle = merge(lib, pkg, injectedExamples);
+  bundle;
 
-resolvePkgConfig
+resolvePkgBundle

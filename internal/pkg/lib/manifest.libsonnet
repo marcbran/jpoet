@@ -1,4 +1,4 @@
-local resolvePkgConfig = import './resolve_pkg_config.libsonnet';
+local resolvePkgBundle = import './resolve_pkg_bundle.libsonnet';
 local j = import 'jsonnet/main.libsonnet';
 local md = import 'markdown/main.libsonnet';
 
@@ -152,8 +152,8 @@ local documentation(elem, depth=1) =
     + std.flattenArrays([documentation(child, depth + 1) for child in elem.children]);
 
 local manifest(lib, libString, pkg, examples, examplesString) =
-  local pkgConfig = resolvePkgConfig(lib, pkg, examples, examplesString);
-  local doc = documentation(pkgConfig);
+  local bundle = resolvePkgBundle(lib, pkg, examples, examplesString);
+  local doc = documentation(bundle);
   {
     'main.libsonnet': j.formatJsonnet(libString),
     'README.md': md.manifestMarkdown(md.Document(doc)),

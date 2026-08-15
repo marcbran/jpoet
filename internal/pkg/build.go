@@ -24,7 +24,17 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		}
 		return errors.New("main.libsonnet not found")
 	}
-	inlinedMainCode, err := inlineFile(mainFile)
+
+	cfg, err := ResolvePkgConfig(pkgDir)
+	if err != nil {
+		return err
+	}
+	external := make(map[string]bool, len(cfg.External))
+	for _, imp := range cfg.External {
+		external[imp] = true
+	}
+
+	inlinedMainCode, err := inlineFile(mainFile, external)
 	if err != nil {
 		return err
 	}
@@ -80,8 +90,8 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 	return nil
 }
 
-func inlineFile(input string) (string, error) {
-	node, finalFodder, err := readInlineNode(input)
+func inlineFile(input string, external map[string]bool) (string, error) {
+	node, finalFodder, err := readInlineNode(input, external)
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +102,7 @@ func inlineFile(input string) (string, error) {
 	return format, nil
 }
 
-func readInlineNode(filename string) (ast.Node, ast.Fodder, error) {
+func readInlineNode(filename string, external map[string]bool) (ast.Node, ast.Fodder, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, nil, err
@@ -101,30 +111,30 @@ func readInlineNode(filename string) (ast.Node, ast.Fodder, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = inlineNode(node, filename)
+	err = inlineNode(node, filename, external)
 	if err != nil {
 		return nil, nil, err
 	}
 	return node, finalFodder, nil
 }
 
-func inlineNode(node ast.Node, filename string) error {
+func inlineNode(node ast.Node, filename string, external map[string]bool) error {
 	switch n := node.(type) {
 	case *ast.Local:
 		for i := range n.Binds {
-			resolved, err := inlineValue(n.Binds[i].Body, filename)
+			resolved, err := inlineValue(n.Binds[i].Body, filename, external)
 			if err != nil {
 				return err
 			}
 			n.Binds[i].Body = resolved
 		}
-		return inlineNode(n.Body, filename)
+		return inlineNode(n.Body, filename, external)
 	case *ast.Object:
 		for i := range n.Fields {
 			if n.Fields[i].Expr2 == nil {
 				continue
 			}
-			resolved, err := inlineValue(n.Fields[i].Expr2, filename)
+			resolved, err := inlineValue(n.Fields[i].Expr2, filename, external)
 			if err != nil {
 				return err
 			}
@@ -134,16 +144,19 @@ func inlineNode(node ast.Node, filename string) error {
 	return nil
 }
 
-func inlineValue(node ast.Node, filename string) (ast.Node, error) {
+func inlineValue(node ast.Node, filename string, external map[string]bool) (ast.Node, error) {
 	imp, ok := node.(*ast.Import)
 	if !ok {
+		return node, nil
+	}
+	if external[imp.File.Value] {
 		return node, nil
 	}
 	impFilename, err := filepath.Abs(filepath.Join(filepath.Dir(filename), imp.File.Value))
 	if err != nil {
 		return nil, err
 	}
-	impNode, _, err := readInlineNode(impFilename)
+	impNode, _, err := readInlineNode(impFilename, external)
 	if err != nil {
 		return nil, err
 	}

@@ -3,10 +3,11 @@ package pkg
 import (
 	"embed"
 	"errors"
-	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
-	"github.com/marcbran/jpoet/pkg/jpoet"
 	"os"
 	"path/filepath"
+
+	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
+	"github.com/marcbran/jpoet/pkg/jpoet"
 )
 
 //go:embed lib
@@ -18,6 +19,7 @@ type Config struct {
 	Coordinates Coordinates `json:"coordinates"`
 	Usage       Usage       `json:"usage"`
 	Plugins     []Plugin    `json:"plugins"`
+	External    []string    `json:"external"`
 }
 
 type Coordinates struct {
@@ -41,22 +43,8 @@ type GithubPlugin struct {
 }
 
 func ResolvePkgConfig(pkgDir string) (Config, error) {
-	mainFile := filepath.Join(pkgDir, "main.libsonnet")
-	mainCode := []byte("{}")
-	_, err := os.Stat(mainFile)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return Config{}, err
-		}
-	} else {
-		mainCode, err = os.ReadFile(mainFile)
-		if err != nil {
-			return Config{}, err
-		}
-	}
-
 	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
-	_, err = os.Stat(pkgFile)
+	_, err := os.Stat(pkgFile)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return Config{}, err
@@ -72,13 +60,8 @@ func ResolvePkgConfig(pkgDir string) (Config, error) {
 	err = jpoet.Eval(
 		jpoet.FSImport(lib),
 		jpoet.FSImport(imports.Fs),
-		jpoet.StringImport("input/main.libsonnet", string(mainCode)),
 		jpoet.StringImport("input/pkg.libsonnet", string(pkgCode)),
-		jpoet.TLACode("lib", "import 'input/main.libsonnet'"),
-		jpoet.TLACode("pkg", "import 'input/pkg.libsonnet'"),
-		jpoet.TLACode("examples", "null"),
-		jpoet.TLACode("examplesString", "null"),
-		jpoet.FileInput("./lib/resolve_pkg_config.libsonnet"),
+		jpoet.SnippetInput("pkg.libsonnet", "import 'input/pkg.libsonnet'"),
 		jpoet.Serialize(false),
 		jpoet.ValueOutput(&config),
 	)
