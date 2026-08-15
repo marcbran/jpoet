@@ -12,6 +12,7 @@
     source: std.get(pkg, 'source', null),
     description: description,
     plugins: pkg.plugins,
+    external: std.get(pkg, 'external', []),
     children: children,
   },
   desc(description, children={}): {
