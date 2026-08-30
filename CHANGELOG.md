@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/marcbran/jpoet/compare/v0.19.0...v0.20.0) (2026-08-30)
+
+
+### Features
+
+* reusable env for multiple evals ([#146](https://github.com/marcbran/jpoet/issues/146)) ([4afd512](https://github.com/marcbran/jpoet/commit/4afd512759d25828904281fb79dd5c4bfc1e12a8))
+
 ## [0.19.0](https://github.com/marcbran/jpoet/compare/v0.18.0...v0.19.0) (2026-08-15)
 
 
