@@ -12,29 +12,58 @@ import (
 )
 
 type Plugin struct {
-	name       string
-	invoker    plugin.Invoker
-	closer     io.Closer
-	middleware []Middleware
+	name        string
+	invoker     plugin.Invoker
+	closer      io.Closer
+	middleware  []Middleware
+	watchSource WatchSource
 }
 
-func NewPlugin(name string, functions []jsonnet.NativeFunction) *Plugin {
-	return &Plugin{
-		name:    name,
-		invoker: plugin.NewLocalInvoker(functions),
+type WatchSource interface {
+	InvocationKey(funcName string, args []any) InvocationKey
+	Acquire(key InvocationKey) (cancel func(), err error)
+	SetChanges(changes func(keys []InvocationKey))
+}
+
+type InvocationKey string
+
+type PluginOption func(*Plugin)
+
+func WithWatchSource(source WatchSource) PluginOption {
+	return func(p *Plugin) {
+		p.watchSource = source
 	}
 }
 
-func NewClientPlugin(name string, path string) (*Plugin, error) {
+func (p *Plugin) WatchSource() WatchSource {
+	return p.watchSource
+}
+
+func NewPlugin(name string, functions []jsonnet.NativeFunction, opts ...PluginOption) *Plugin {
+	p := &Plugin{
+		name:    name,
+		invoker: plugin.NewLocalInvoker(functions),
+	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
+func NewClientPlugin(name string, path string, opts ...PluginOption) (*Plugin, error) {
 	invoker, err := plugin.NewClientInvoker(name, path)
 	if err != nil {
 		return nil, err
 	}
-	return &Plugin{
+	p := &Plugin{
 		name:    name,
 		invoker: invoker,
 		closer:  invoker,
-	}, nil
+	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p, nil
 }
 
 type Invoker = plugin.Invoker
@@ -43,10 +72,41 @@ type Middleware func(Invoker) Invoker
 
 func (p *Plugin) WithMiddleware(middleware ...Middleware) *Plugin {
 	return &Plugin{
-		name:       p.name,
-		invoker:    p.invoker,
-		closer:     p.closer,
-		middleware: append(p.middleware, middleware...),
+		name:        p.name,
+		invoker:     p.invoker,
+		closer:      p.closer,
+		middleware:  append(p.middleware, middleware...),
+		watchSource: p.watchSource,
+	}
+}
+
+type multiCloser []io.Closer
+
+func (m multiCloser) Close() error {
+	var errs []error
+	for _, c := range m {
+		if c == nil {
+			continue
+		}
+		err := c.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (p *Plugin) WithCloser(closer io.Closer) *Plugin {
+	combined := closer
+	if p.closer != nil {
+		combined = multiCloser{p.closer, closer}
+	}
+	return &Plugin{
+		name:        p.name,
+		invoker:     p.invoker,
+		closer:      combined,
+		middleware:  p.middleware,
+		watchSource: p.watchSource,
 	}
 }
 
