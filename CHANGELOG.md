@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/marcbran/jpoet/compare/v0.21.0...v0.21.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* close invocation registry ([#152](https://github.com/marcbran/jpoet/issues/152)) ([cd907ba](https://github.com/marcbran/jpoet/commit/cd907ba4c1f89bc61aae3eeb413b675d153d99a9))
+
 ## [0.21.0](https://github.com/marcbran/jpoet/compare/v0.20.0...v0.21.0) (2026-09-05)
 
 
