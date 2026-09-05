@@ -87,14 +87,26 @@ func (r *invocationRegistry) ensure(inv pluginInvocation) *invocationEntry {
 }
 
 func (r *invocationRegistry) evictIdle(maxIdle time.Duration) {
-	r.mu.Lock()
 	now := time.Now()
+	r.evict(func(entry *invocationEntry) bool {
+		return now.Sub(entry.lastAccess) > maxIdle
+	})
+}
+
+func (r *invocationRegistry) close() {
+	r.evict(func(*invocationEntry) bool {
+		return true
+	})
+}
+
+func (r *invocationRegistry) evict(shouldEvict func(*invocationEntry) bool) {
+	r.mu.Lock()
 	var toCancel []func()
 	for key, entry := range r.entries {
 		if entry.refs > 0 {
 			continue
 		}
-		if now.Sub(entry.lastAccess) <= maxIdle {
+		if !shouldEvict(entry) {
 			continue
 		}
 		toCancel = append(toCancel, entry.cancel)
