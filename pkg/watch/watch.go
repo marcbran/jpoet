@@ -64,7 +64,9 @@ func New(env *jpoet.Environment) *Environment {
 }
 
 func (we *Environment) Close() error {
-	return we.lifecycle.Close()
+	err := we.lifecycle.Close()
+	we.invocations.close()
+	return err
 }
 
 func (we *Environment) Eval(opts ...jpoet.EvalOption) error {
