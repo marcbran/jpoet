@@ -29,16 +29,6 @@ type InvocationKey string
 
 type PluginOption func(*Plugin)
 
-func WithWatchSource(source WatchSource) PluginOption {
-	return func(p *Plugin) {
-		p.watchSource = source
-	}
-}
-
-func (p *Plugin) WatchSource() WatchSource {
-	return p.watchSource
-}
-
 func NewPlugin(name string, functions []jsonnet.NativeFunction, opts ...PluginOption) *Plugin {
 	p := &Plugin{
 		name:    name,
@@ -66,47 +56,48 @@ func NewClientPlugin(name string, path string, opts ...PluginOption) (*Plugin, e
 	return p, nil
 }
 
+func NewPluginsDir(pluginsDir string, opts ...PluginOption) ([]*Plugin, error) {
+	entries, err := readPluginEntries(pluginsDir)
+	if err != nil {
+		return nil, err
+	}
+	var plugins []*Plugin
+	for _, entry := range entries {
+		name := entry.Name()
+		p, err := NewClientPlugin(name, filepath.Join(pluginsDir, name, name), opts...)
+		if err != nil {
+			return nil, err
+		}
+		plugins = append(plugins, p)
+	}
+	return plugins, nil
+}
+
+func readPluginEntries(pluginsDir string) ([]os.DirEntry, error) {
+	_, err := os.Stat(pluginsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return os.ReadDir(pluginsDir)
+}
+
+func (p *Plugin) WithOptions(opts ...PluginOption) *Plugin {
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
 type Invoker = plugin.Invoker
 
 type Middleware func(Invoker) Invoker
 
-func (p *Plugin) WithMiddleware(middleware ...Middleware) *Plugin {
-	return &Plugin{
-		name:        p.name,
-		invoker:     p.invoker,
-		closer:      p.closer,
-		middleware:  append(p.middleware, middleware...),
-		watchSource: p.watchSource,
-	}
-}
-
-type multiCloser []io.Closer
-
-func (m multiCloser) Close() error {
-	var errs []error
-	for _, c := range m {
-		if c == nil {
-			continue
-		}
-		err := c.Close()
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
-}
-
-func (p *Plugin) WithCloser(closer io.Closer) *Plugin {
-	combined := closer
-	if p.closer != nil {
-		combined = multiCloser{p.closer, closer}
-	}
-	return &Plugin{
-		name:        p.name,
-		invoker:     p.invoker,
-		closer:      combined,
-		middleware:  p.middleware,
-		watchSource: p.watchSource,
+func WithMiddleware(middleware ...Middleware) PluginOption {
+	return func(p *Plugin) {
+		p.middleware = append(p.middleware, middleware...)
 	}
 }
 
@@ -127,28 +118,44 @@ func HookMiddleware(hook InvokeHook) Middleware {
 	}
 }
 
-func (p *Plugin) WithHook(hook InvokeHook) *Plugin {
-	return p.WithMiddleware(HookMiddleware(hook))
+func WithHook(hook InvokeHook) PluginOption {
+	return WithMiddleware(HookMiddleware(hook))
 }
 
-func NewPluginsDir(pluginsDir string, middleware ...Middleware) ([]*Plugin, error) {
-	entries, err := readPluginEntries(pluginsDir)
-	if err != nil {
-		return nil, err
-	}
-	var plugins []*Plugin
-	for _, entry := range entries {
-		name := entry.Name()
-		p, err := NewClientPlugin(name, filepath.Join(pluginsDir, name, name))
+type multiCloser []io.Closer
+
+func (m multiCloser) Close() error {
+	var errs []error
+	for _, c := range m {
+		if c == nil {
+			continue
+		}
+		err := c.Close()
 		if err != nil {
-			return nil, err
+			errs = append(errs, err)
 		}
-		if len(middleware) > 0 {
-			p = p.WithMiddleware(middleware...)
-		}
-		plugins = append(plugins, p)
 	}
-	return plugins, nil
+	return errors.Join(errs...)
+}
+
+func WithCloser(closer io.Closer) PluginOption {
+	return func(p *Plugin) {
+		if p.closer != nil {
+			p.closer = multiCloser{p.closer, closer}
+			return
+		}
+		p.closer = closer
+	}
+}
+
+func WithWatchSource(source WatchSource) PluginOption {
+	return func(p *Plugin) {
+		p.watchSource = source
+	}
+}
+
+func (p *Plugin) WatchSource() WatchSource {
+	return p.watchSource
 }
 
 func (p *Plugin) Serve() {
@@ -168,15 +175,4 @@ func (p *Plugin) Close() error {
 		return p.closer.Close()
 	}
 	return nil
-}
-
-func readPluginEntries(pluginsDir string) ([]os.DirEntry, error) {
-	_, err := os.Stat(pluginsDir)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return os.ReadDir(pluginsDir)
 }
