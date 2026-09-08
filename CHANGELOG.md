@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/marcbran/jpoet/compare/v0.21.1...v0.22.0) (2026-09-08)
+
+
+### Features
+
+* plugin with options pattern ([#154](https://github.com/marcbran/jpoet/issues/154)) ([7a2c666](https://github.com/marcbran/jpoet/commit/7a2c666f14bc2773a65ae7091174ffe8bacb59ff))
+
 ## [0.21.1](https://github.com/marcbran/jpoet/compare/v0.21.0...v0.21.1) (2026-09-05)
 
 
