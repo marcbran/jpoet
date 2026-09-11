@@ -8,9 +8,11 @@ import (
 type watchEntry struct {
 	input       watchConfig
 	invocations []pluginInvocation
-	lastOutput  string
-	subscribers map[chan string]struct{}
+	subscribers map[sink]struct{}
 	idleSince   time.Time
+
+	lastDelivered    string
+	hasLastDelivered bool
 }
 
 type watchRegistry struct {
@@ -23,24 +25,6 @@ func newWatchRegistry(invocations *invocationRegistry) *watchRegistry {
 	return &watchRegistry{entries: map[WatchKey]*watchEntry{}, invocations: invocations}
 }
 
-func (r *watchRegistry) ref(invocations []pluginInvocation, delta int) {
-	for _, inv := range invocations {
-		r.invocations.ref(inv, delta)
-	}
-}
-
-func (r *watchRegistry) matching(change pluginInvocation) []WatchKey {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	var keys []WatchKey
-	for key, entry := range r.entries {
-		if containsInvocation(entry.invocations, change) {
-			keys = append(keys, key)
-		}
-	}
-	return keys
-}
-
 func (r *watchRegistry) input(key WatchKey) (watchConfig, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -51,65 +35,30 @@ func (r *watchRegistry) input(key WatchKey) (watchConfig, bool) {
 	return entry.input, true
 }
 
-func (r *watchRegistry) attach(key WatchKey) (initial string, ch chan string, ok bool) {
+func (r *watchRegistry) ensure(key WatchKey, input watchConfig, s sink) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	entry, ok := r.entries[key]
 	if !ok {
-		r.mu.Unlock()
-		return "", nil, false
-	}
-	wasIdle := len(entry.subscribers) == 0
-	ch = make(chan string, 1)
-	entry.subscribers[ch] = struct{}{}
-	entry.idleSince = time.Time{}
-	var activated []pluginInvocation
-	if wasIdle {
-		activated = entry.invocations
-	}
-	initial = entry.lastOutput
-	r.mu.Unlock()
-
-	r.ref(activated, 1)
-	return initial, ch, true
-}
-
-func (r *watchRegistry) create(key WatchKey, input watchConfig, output string, invocations []pluginInvocation) (initial string, ch chan string) {
-	r.mu.Lock()
-	entry, ok := r.entries[key]
-	if !ok {
-		ch = make(chan string, 1)
 		r.entries[key] = &watchEntry{
 			input:       input,
-			invocations: invocations,
-			lastOutput:  output,
-			subscribers: map[chan string]struct{}{ch: {}},
+			subscribers: map[sink]struct{}{s: {}},
 		}
-		r.mu.Unlock()
-
-		r.ref(invocations, 1)
-		return output, ch
+		return
 	}
-	wasIdle := len(entry.subscribers) == 0
-	ch = make(chan string, 1)
-	entry.subscribers[ch] = struct{}{}
+	if len(entry.subscribers) == 0 {
+		entry.invocations = nil
+	}
+	entry.subscribers[s] = struct{}{}
 	entry.idleSince = time.Time{}
-	var activated []pluginInvocation
-	if wasIdle {
-		activated = entry.invocations
-	}
-	initial = entry.lastOutput
-	r.mu.Unlock()
-
-	r.ref(activated, 1)
-	return initial, ch
 }
 
-func (r *watchRegistry) update(key WatchKey, output string, invocations []pluginInvocation) (subs []chan string) {
+func (r *watchRegistry) update(key WatchKey, result Result, invocations []pluginInvocation) (subs []sink, changed bool) {
 	r.mu.Lock()
 	entry, ok := r.entries[key]
 	if !ok {
 		r.mu.Unlock()
-		return nil
+		return nil, false
 	}
 	var activated, deactivated []pluginInvocation
 	if len(entry.subscribers) > 0 {
@@ -125,30 +74,34 @@ func (r *watchRegistry) update(key WatchKey, output string, invocations []plugin
 		}
 	}
 	entry.invocations = invocations
-	entry.lastOutput = output
-	subs = make([]chan string, 0, len(entry.subscribers))
-	for ch := range entry.subscribers {
-		subs = append(subs, ch)
+	changed = result.Err != nil || !entry.hasLastDelivered || entry.lastDelivered != result.Output
+	if result.Err == nil {
+		entry.lastDelivered = result.Output
+		entry.hasLastDelivered = true
+	}
+	subs = make([]sink, 0, len(entry.subscribers))
+	for s := range entry.subscribers {
+		subs = append(subs, s)
 	}
 	r.mu.Unlock()
 
 	r.ref(activated, 1)
 	r.ref(deactivated, -1)
-	return subs
+	return subs, changed
 }
 
-func (r *watchRegistry) detach(key WatchKey, ch chan string) {
+func (r *watchRegistry) detach(key WatchKey, s sink) {
 	r.mu.Lock()
 	entry, ok := r.entries[key]
 	if !ok {
 		r.mu.Unlock()
 		return
 	}
-	if _, present := entry.subscribers[ch]; !present {
+	if _, present := entry.subscribers[s]; !present {
 		r.mu.Unlock()
 		return
 	}
-	delete(entry.subscribers, ch)
+	delete(entry.subscribers, s)
 	var deactivated []pluginInvocation
 	if len(entry.subscribers) == 0 {
 		entry.idleSince = time.Now()
@@ -157,6 +110,12 @@ func (r *watchRegistry) detach(key WatchKey, ch chan string) {
 	r.mu.Unlock()
 
 	r.ref(deactivated, -1)
+}
+
+func (r *watchRegistry) ref(invocations []pluginInvocation, delta int) {
+	for _, inv := range invocations {
+		r.invocations.ref(inv, delta)
+	}
 }
 
 func (r *watchRegistry) evictIdle(maxIdle time.Duration) {
@@ -177,6 +136,18 @@ func (r *watchRegistry) evictIdle(maxIdle time.Duration) {
 	}
 }
 
+func (r *watchRegistry) matchingInvocation(change pluginInvocation) []WatchKey {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var keys []WatchKey
+	for key, entry := range r.entries {
+		if containsInvocation(entry.invocations, change) {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
 func containsInvocation(invocations []pluginInvocation, target pluginInvocation) bool {
 	for _, inv := range invocations {
 		if inv.key == target.key && inv.plugin == target.plugin {
@@ -184,4 +155,26 @@ func containsInvocation(invocations []pluginInvocation, target pluginInvocation)
 		}
 	}
 	return false
+}
+
+func (r *watchRegistry) subscribedKeys() []WatchKey {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var keys []WatchKey
+	for key, entry := range r.entries {
+		if len(entry.subscribers) > 0 {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
+func (r *watchRegistry) hasSubscribers(key WatchKey) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	entry, ok := r.entries[key]
+	if !ok {
+		return false
+	}
+	return len(entry.subscribers) > 0
 }

@@ -43,8 +43,8 @@ func (c *config) eval() error {
 			}
 		}
 	}()
-	vm := c.buildVM()
-	err := c.run(vm, c.recorder)
+	vm, _ := c.build()
+	err := c.run(vm, c.invocations, c.paths)
 	if err != nil {
 		c.errs = append(c.errs, err)
 	}
@@ -105,12 +105,12 @@ func FileInput(filename string) Option {
 
 func Importer(i jsonnet.Importer) Option {
 	return func(c *config) {
-		c.importer.Importers = append(c.importer.Importers, i)
+		c.importers = append(c.importers, i)
 	}
 }
 
 func FileImport(jpaths []string) Option {
-	return Importer(&jsonnet.FileImporter{JPaths: jpaths})
+	return Importer(&FileImporter{JPaths: jpaths})
 }
 
 func FSImport(f fs.FS) Option {
@@ -135,7 +135,7 @@ func WithNativeFunction(f *jsonnet.NativeFunction) Option {
 func WithPlugin(p *Plugin) Option {
 	return func(c *config) {
 		c.closers = append(c.closers, p)
-		nf := p.recordingNativeFunction(c.recorder)
+		nf := p.recordingNativeFunction(c.invocations)
 		WithNativeFunction(nf)(c)
 	}
 }

@@ -29,7 +29,7 @@ func (r *invocationRecorder) take() []Invocation {
 	return invocations
 }
 
-func (p *Plugin) recordingNativeFunction(recorder *invocationRecorder) *jsonnet.NativeFunction {
+func (p *Plugin) recordingNativeFunction(invocations *invocationRecorder) *jsonnet.NativeFunction {
 	nf := p.NativeFunction()
 	inner := nf.Func
 	wrapped := *nf
@@ -38,9 +38,42 @@ func (p *Plugin) recordingNativeFunction(recorder *invocationRecorder) *jsonnet.
 		if err == nil && len(input) == 2 && p.watchSource != nil {
 			funcName, _ := input[0].(string)
 			args, _ := input[1].([]any)
-			recorder.record(Invocation{Key: p.watchSource.InvocationKey(funcName, args), Plugin: p})
+			invocations.record(Invocation{Key: p.watchSource.InvocationKey(funcName, args), Plugin: p})
 		}
 		return result, err
 	}
 	return &wrapped
+}
+
+type pathRecorder struct {
+	paths []string
+}
+
+func (r *pathRecorder) record(path string) {
+	if r == nil {
+		return
+	}
+	r.paths = append(r.paths, path)
+}
+
+func (r *pathRecorder) take() []string {
+	if r == nil {
+		return nil
+	}
+	paths := r.paths
+	r.paths = nil
+	return paths
+}
+
+type recordingImporter struct {
+	inner    jsonnet.Importer
+	recorder *pathRecorder
+}
+
+func (r *recordingImporter) Import(importedFrom, importedPath string) (jsonnet.Contents, string, error) {
+	contents, foundAt, err := r.inner.Import(importedFrom, importedPath)
+	if err == nil {
+		r.recorder.record(foundAt)
+	}
+	return contents, foundAt, err
 }

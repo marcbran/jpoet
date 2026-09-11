@@ -28,39 +28,51 @@ type Environment struct {
 	watches     *watchRegistry
 	invocations *invocationRegistry
 
-	dirtyMu     sync.Mutex
-	dirty       map[pluginInvocation]struct{}
-	dirtyNotify chan struct{}
+	dirtyMu          sync.Mutex
+	dirtyInvocations map[pluginInvocation]struct{}
+	dirtyPaths       map[string]struct{}
+	dirtyNotify      chan struct{}
+
+	dirWatcher *directoryWatcher
 
 	lifecycle *jpoet.Lifecycle
 }
 
-func New(env *jpoet.Environment) *Environment {
+func New(env *jpoet.Environment) (*Environment, error) {
+	dirWatcher, err := newDirectoryWatcher()
+	if err != nil {
+		return nil, err
+	}
+
 	invocations := newInvocationRegistry()
 	we := &Environment{
 		Environment: env,
+
 		watches:     newWatchRegistry(invocations),
 		invocations: invocations,
-		dirty:       map[pluginInvocation]struct{}{},
-		dirtyNotify: make(chan struct{}, 1),
-		lifecycle:   jpoet.NewLifecycle(env.Close),
-	}
 
-	hasWatchSupport := false
+		dirtyInvocations: map[pluginInvocation]struct{}{},
+		dirtyPaths:       map[string]struct{}{},
+		dirtyNotify:      make(chan struct{}, 1),
+
+		dirWatcher: dirWatcher,
+	}
+	we.lifecycle = jpoet.NewLifecycle(func() error {
+		return errors.Join(env.Close(), dirWatcher.Close())
+	})
+
 	for _, p := range env.Plugins() {
 		source := p.WatchSource()
 		if source == nil {
 			continue
 		}
-		hasWatchSupport = true
 		source.SetChanges(we.changesFunc(p))
 	}
 
+	we.lifecycle.Go(we.runDirWatch)
+	we.lifecycle.Go(we.runDirtyDispatch)
 	we.lifecycle.Go(we.runEviction)
-	if hasWatchSupport {
-		we.lifecycle.Go(we.runDirtyDispatch)
-	}
-	return we
+	return we, nil
 }
 
 func (we *Environment) Close() error {
@@ -71,39 +83,65 @@ func (we *Environment) Close() error {
 
 func (we *Environment) Eval(opts ...jpoet.EvalOption) error {
 	var invocations []jpoet.Invocation
-	err := we.Environment.Eval(append(opts, jpoet.EvalInvocations(&invocations))...)
+	var paths []string
+	err := we.Environment.Eval(append(opts, jpoet.EvalInvocations(&invocations), jpoet.EvalImportedPaths(&paths))...)
 	we.touchInvocations(toInvocations(invocations))
+	we.dirWatcher.track(paths)
 	return err
 }
 
-func (we *Environment) Watch(opts ...WatchOption) (string, <-chan string, func(), error) {
+type Result struct {
+	Output string
+	Err    error
+}
+
+func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
 	c := watchConfig{}
 	for _, opt := range opts {
 		opt(&c)
 	}
 	if c.key == "" {
-		return "", nil, nil, errors.New("watch key is required")
+		return nil, errors.New("watch key is required")
 	}
 	if !c.hasInput() {
-		return "", nil, nil, errors.New("missing input")
+		return nil, errors.New("missing input")
+	}
+	if !c.hasOutput() {
+		return nil, errors.New("watch output is required")
 	}
 
-	if initial, ch, ok := we.watches.attach(c.key); ok {
-		return initial, ch, we.unregisterFunc(c.key, ch), nil
+	var s sink
+	var ch chan Result
+	if c.valueOutput != nil {
+		ch = make(chan Result, 1)
+		s = channelSink{ch: ch}
+	} else {
+		s = fileSink{path: c.fileOutput}
 	}
 
-	output, invocations, err := we.evalForWatch(c)
-	if err != nil {
-		return "", nil, nil, err
+	we.watches.ensure(c.key, c, s)
+	initial, _, _ := we.evaluate(c.key)
+
+	if c.valueOutput != nil {
+		*c.valueOutput.initial = initial
+		*c.valueOutput.updates = ch
+	} else {
+		s.deliver(initial)
 	}
 
-	initial, ch := we.watches.create(c.key, c, output, invocations)
-
-	return initial, ch, we.unregisterFunc(c.key, ch), nil
+	unregister := we.unregisterFunc(c.key, s)
+	if initial.Err != nil {
+		return unregister, initial.Err
+	}
+	return unregister, nil
 }
 
-func (we *Environment) evalForWatch(c watchConfig) (string, []pluginInvocation, error) {
-	opts := []jpoet.EvalOption{jpoet.EvalSerialize(true)}
+func (we *Environment) evalForWatch(c watchConfig) (Result, []pluginInvocation) {
+	serialize := true
+	if c.serialize != nil {
+		serialize = *c.serialize
+	}
+	opts := []jpoet.EvalOption{jpoet.EvalSerialize(serialize)}
 	switch {
 	case c.nodeInput != nil:
 		opts = append(opts, jpoet.EvalNodeInput(*c.nodeInput))
@@ -116,19 +154,22 @@ func (we *Environment) evalForWatch(c watchConfig) (string, []pluginInvocation, 
 	opts = append(opts, jpoet.EvalWriterOutput(&out))
 	var recorded []jpoet.Invocation
 	opts = append(opts, jpoet.EvalInvocations(&recorded))
+	var paths []string
+	opts = append(opts, jpoet.EvalImportedPaths(&paths))
 
 	err := we.Environment.Eval(opts...)
 	invocations := toInvocations(recorded)
 	we.touchInvocations(invocations)
+	we.dirWatcher.track(paths)
 	if err != nil {
-		return "", nil, err
+		return Result{Err: err}, invocations
 	}
-	return out.String(), invocations, nil
+	return Result{Output: out.String()}, invocations
 }
 
-func (we *Environment) unregisterFunc(key WatchKey, ch chan string) func() {
+func (we *Environment) unregisterFunc(key WatchKey, s sink) func() {
 	return func() {
-		we.watches.detach(key, ch)
+		we.watches.detach(key, s)
 	}
 }
 
@@ -149,19 +190,38 @@ func toInvocations(invocations []jpoet.Invocation) []pluginInvocation {
 func (we *Environment) changesFunc(p *jpoet.Plugin) func(keys []InvocationKey) {
 	return func(keys []InvocationKey) {
 		for _, key := range keys {
-			we.markDirty(pluginInvocation{key: key, plugin: p})
+			we.markDirtyInvocation(pluginInvocation{key: key, plugin: p})
 		}
 	}
 }
 
-func (we *Environment) markDirty(inv pluginInvocation) {
+func (we *Environment) runDirWatch() {
+	we.dirWatcher.run(we.lifecycle.Done(), we.markDirtyPath)
+}
+
+func (we *Environment) markDirtyInvocation(inv pluginInvocation) {
 	we.dirtyMu.Lock()
-	_, exists := we.dirty[inv]
-	we.dirty[inv] = struct{}{}
+	_, exists := we.dirtyInvocations[inv]
+	we.dirtyInvocations[inv] = struct{}{}
 	we.dirtyMu.Unlock()
 	if exists {
 		return
 	}
+	we.notifyDirty()
+}
+
+func (we *Environment) markDirtyPath(path string) {
+	we.dirtyMu.Lock()
+	_, exists := we.dirtyPaths[path]
+	we.dirtyPaths[path] = struct{}{}
+	we.dirtyMu.Unlock()
+	if exists {
+		return
+	}
+	we.notifyDirty()
+}
+
+func (we *Environment) notifyDirty() {
 	select {
 	case we.dirtyNotify <- struct{}{}:
 	default:
@@ -175,58 +235,69 @@ func (we *Environment) runDirtyDispatch() {
 			return
 		case <-we.dirtyNotify:
 		}
-		for {
-			inv, ok := we.popDirty()
-			if !ok {
-				break
-			}
-			we.handleChange(inv)
+		invocations, paths := we.drainDirty()
+		if we.handleDirtyPaths(paths) {
+			continue
 		}
+		we.handleDirtyInvocations(invocations)
 	}
 }
 
-func (we *Environment) popDirty() (pluginInvocation, bool) {
+func (we *Environment) drainDirty() (map[pluginInvocation]struct{}, map[string]struct{}) {
 	we.dirtyMu.Lock()
 	defer we.dirtyMu.Unlock()
-	for inv := range we.dirty {
-		delete(we.dirty, inv)
-		return inv, true
-	}
-	return pluginInvocation{}, false
+	invocations := we.dirtyInvocations
+	paths := we.dirtyPaths
+	we.dirtyInvocations = map[pluginInvocation]struct{}{}
+	we.dirtyPaths = map[string]struct{}{}
+	return invocations, paths
 }
 
-func (we *Environment) handleChange(change pluginInvocation) {
-	for _, key := range we.watches.matching(change) {
-		we.reevaluate(key)
-	}
-}
-
-func (we *Environment) reevaluate(key WatchKey) {
-	input, ok := we.watches.input(key)
-	if !ok {
-		return
-	}
-
-	output, invocations, err := we.evalForWatch(input)
-	if err != nil {
-		return
-	}
-
-	subs := we.watches.update(key, output, invocations)
-	for _, ch := range subs {
-		select {
-		case ch <- output:
-		default:
-			select {
-			case <-ch:
-			default:
-			}
-			select {
-			case ch <- output:
-			default:
-			}
+func (we *Environment) handleDirtyInvocations(invocations map[pluginInvocation]struct{}) {
+	dirtyKeys := map[WatchKey]struct{}{}
+	for inv := range invocations {
+		for _, key := range we.watches.matchingInvocation(inv) {
+			dirtyKeys[key] = struct{}{}
 		}
 	}
+	for key := range dirtyKeys {
+		if we.watches.hasSubscribers(key) {
+			we.reevaluate(key)
+		}
+	}
+}
+
+func (we *Environment) handleDirtyPaths(paths map[string]struct{}) bool {
+	if len(paths) == 0 {
+		return false
+	}
+	we.FlushCache()
+	for _, key := range we.watches.subscribedKeys() {
+		we.reevaluate(key)
+	}
+	return true
+}
+
+func (we *Environment) reevaluate(key WatchKey) Result {
+	result, subs, changed := we.evaluate(key)
+	if !changed {
+		return result
+	}
+	for _, s := range subs {
+		s.deliver(result)
+	}
+	return result
+}
+
+func (we *Environment) evaluate(key WatchKey) (Result, []sink, bool) {
+	input, ok := we.watches.input(key)
+	if !ok {
+		return Result{}, nil, false
+	}
+
+	result, invocations := we.evalForWatch(input)
+	subs, changed := we.watches.update(key, result, invocations)
+	return result, subs, changed
 }
 
 func (we *Environment) runEviction() {
@@ -257,10 +328,23 @@ type watchConfig struct {
 	snippetInput *snippetInput
 	fileInput    *string
 	key          WatchKey
+	serialize    *bool
+
+	valueOutput *valueOutput
+	fileOutput  string
+}
+
+type valueOutput struct {
+	initial *Result
+	updates *<-chan Result
 }
 
 func (c *watchConfig) hasInput() bool {
 	return c.nodeInput != nil || c.snippetInput != nil || c.fileInput != nil
+}
+
+func (c *watchConfig) hasOutput() bool {
+	return c.valueOutput != nil || c.fileOutput != ""
 }
 
 func WatchNodeInput(node ast.Node) WatchOption {
@@ -290,5 +374,25 @@ func WatchFileInput(filename string) WatchOption {
 func WatchWithKey(key WatchKey) WatchOption {
 	return func(c *watchConfig) {
 		c.key = key
+	}
+}
+
+func WatchSerialize(s bool) WatchOption {
+	return func(c *watchConfig) {
+		c.serialize = &s
+	}
+}
+
+func WatchValueOutput(initial *Result, updates *<-chan Result) WatchOption {
+	return func(c *watchConfig) {
+		c.valueOutput = &valueOutput{initial: initial, updates: updates}
+		c.fileOutput = ""
+	}
+}
+
+func WatchFileOutput(path string) WatchOption {
+	return func(c *watchConfig) {
+		c.fileOutput = path
+		c.valueOutput = nil
 	}
 }

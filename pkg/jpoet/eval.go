@@ -26,7 +26,7 @@ func (e *Environment) Eval(opts ...EvalOption) error {
 	}
 	e.vmMu.Lock()
 	defer e.vmMu.Unlock()
-	return c.run(e.vm, e.recorder)
+	return c.run(e.vm, e.invocations, e.paths)
 }
 
 type EvalOption func(*evalConfig)
@@ -41,7 +41,9 @@ type evalConfig struct {
 	directoryOutput string
 
 	serializedFormat bool
-	invocations      *[]Invocation
+
+	recordedInvocations *[]Invocation
+	recordedPaths       *[]string
 }
 
 type snippetInput struct {
@@ -56,23 +58,27 @@ func newEvalConfig() evalConfig {
 	}
 }
 
-func (c *evalConfig) hasInput() bool {
-	return c.nodeInput != nil || c.snippetInput != nil || c.fileInput != nil
-}
-
-func (c *evalConfig) run(vm *jsonnet.VM, recorder *invocationRecorder) error {
+func (c *evalConfig) run(vm *jsonnet.VM, invocations *invocationRecorder, paths *pathRecorder) error {
 	if !c.hasInput() {
 		return errors.New("missing input")
 	}
 	serializedJson, err := evaluateInput(vm, c.nodeInput, c.snippetInput, c.fileInput)
-	invocations := recorder.take()
-	if c.invocations != nil {
-		*c.invocations = invocations
+	recordedInvocations := invocations.take()
+	if c.recordedInvocations != nil {
+		*c.recordedInvocations = recordedInvocations
+	}
+	recordedPaths := paths.take()
+	if c.recordedPaths != nil {
+		*c.recordedPaths = recordedPaths
 	}
 	if err != nil {
 		return err
 	}
 	return writeOutput(serializedJson, c.writerOutput, c.valueOutput, c.directoryOutput, c.serializedFormat)
+}
+
+func (c *evalConfig) hasInput() bool {
+	return c.nodeInput != nil || c.snippetInput != nil || c.fileInput != nil
 }
 
 func evaluateInput(vm *jsonnet.VM, nodeInput *ast.Node, snippetInput *snippetInput, fileInput *string) (string, error) {
@@ -231,6 +237,12 @@ func EvalSerialize(s bool) EvalOption {
 
 func EvalInvocations(out *[]Invocation) EvalOption {
 	return func(c *evalConfig) {
-		c.invocations = out
+		c.recordedInvocations = out
+	}
+}
+
+func EvalImportedPaths(out *[]string) EvalOption {
+	return func(c *evalConfig) {
+		c.recordedPaths = out
 	}
 }

@@ -16,27 +16,54 @@ func Env(opts ...EnvOption) *Environment {
 	for _, opt := range opts {
 		opt(&c)
 	}
+	vm, importer := c.build()
 	e := &Environment{
-		plugins:  c.plugins,
-		recorder: c.recorder,
-		vm:       c.buildVM(),
+		plugins:   c.plugins,
+		importers: c.importers,
+		importer:  importer,
+
+		vm: vm,
+
+		invocations: c.invocations,
+		paths:       c.paths,
 	}
 	e.lifecycle = NewLifecycle(nil)
 	return e
 }
 
 type Environment struct {
-	plugins  []*Plugin
-	recorder *invocationRecorder
+	plugins   []*Plugin
+	importers []jsonnet.Importer
+	importer  jsonnet.Importer
 
 	vm   *jsonnet.VM
 	vmMu sync.Mutex
+
+	invocations *invocationRecorder
+	paths       *pathRecorder
 
 	lifecycle *Lifecycle
 }
 
 func (e *Environment) Plugins() []*Plugin {
 	return e.plugins
+}
+
+type flushableImporter interface {
+	FlushCache()
+}
+
+func (e *Environment) FlushCache() {
+	e.vmMu.Lock()
+	defer e.vmMu.Unlock()
+	for _, imp := range e.importers {
+		if f, ok := imp.(flushableImporter); ok {
+			f.FlushCache()
+		}
+	}
+	if e.importer != nil {
+		e.vm.Importer(e.importer)
+	}
 }
 
 func (e *Environment) Close() error {
@@ -46,32 +73,40 @@ func (e *Environment) Close() error {
 type EnvOption func(*envConfig)
 
 type envConfig struct {
-	vmOpts  []func(*jsonnet.VM)
-	plugins []*Plugin
+	vmOpts    []func(*jsonnet.VM)
+	plugins   []*Plugin
+	importers []jsonnet.Importer
+	contents  map[string]jsonnet.Contents
 
-	importer CompoundImporter
-	contents map[string]jsonnet.Contents
-	recorder *invocationRecorder
+	invocations *invocationRecorder
+	paths       *pathRecorder
 }
 
 func newEnvConfig() envConfig {
-	return envConfig{contents: make(map[string]jsonnet.Contents), recorder: &invocationRecorder{}}
+	return envConfig{
+		contents: make(map[string]jsonnet.Contents),
+
+		invocations: &invocationRecorder{},
+		paths:       &pathRecorder{},
+	}
 }
 
-func (c *envConfig) buildVM() *jsonnet.VM {
-	if len(c.contents) > 0 {
-		c.importer.Importers = append(c.importer.Importers, &MemoryImporter{
-			Data: c.contents,
-		})
-	}
+func (c *envConfig) build() (*jsonnet.VM, jsonnet.Importer) {
 	vm := jsonnet.MakeVM()
 	for _, opt := range c.vmOpts {
 		opt(vm)
 	}
-	if len(c.importer.Importers) > 0 {
-		vm.Importer(c.importer)
+
+	importers := c.importers
+	if len(c.contents) > 0 {
+		importers = append(importers, &MemoryImporter{Data: c.contents})
 	}
-	return vm
+	if len(importers) == 0 {
+		return vm, nil
+	}
+	importer := &recordingImporter{inner: CompoundImporter{Importers: importers}, recorder: c.paths}
+	vm.Importer(importer)
+	return vm, importer
 }
 
 func EnvTLAVar(key, val string) EnvOption {
@@ -94,12 +129,12 @@ func EnvTLANode(key string, node ast.Node) EnvOption {
 
 func EnvImporter(i jsonnet.Importer) EnvOption {
 	return func(c *envConfig) {
-		c.importer.Importers = append(c.importer.Importers, i)
+		c.importers = append(c.importers, i)
 	}
 }
 
 func EnvFileImport(jpaths []string) EnvOption {
-	return EnvImporter(&jsonnet.FileImporter{JPaths: jpaths})
+	return EnvImporter(&FileImporter{JPaths: jpaths})
 }
 
 func EnvFSImport(f fs.FS) EnvOption {
@@ -124,7 +159,7 @@ func EnvWithNativeFunction(f *jsonnet.NativeFunction) EnvOption {
 func EnvWithPlugin(p *Plugin) EnvOption {
 	return func(c *envConfig) {
 		c.plugins = append(c.plugins, p)
-		nf := p.recordingNativeFunction(c.recorder)
+		nf := p.recordingNativeFunction(c.invocations)
 		EnvWithNativeFunction(nf)(c)
 	}
 }
