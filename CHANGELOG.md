@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/marcbran/jpoet/compare/v0.22.0...v0.23.0) (2026-09-13)
+
+
+### Features
+
+* invalidate file cache on file changes ([#156](https://github.com/marcbran/jpoet/issues/156)) ([d3dbfe7](https://github.com/marcbran/jpoet/commit/d3dbfe709412ef5360e02fbbc5f97d8d057fc840))
+
 ## [0.22.0](https://github.com/marcbran/jpoet/compare/v0.21.1...v0.22.0) (2026-09-08)
 
 
