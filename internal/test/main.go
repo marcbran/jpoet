@@ -84,7 +84,7 @@ func RunFile(filename string) (*Run, error) {
 	vm.Importer(jpoet.CompoundImporter{
 		Importers: []jsonnet.Importer{
 			&jpoet.FSImporter{Fs: lib},
-			&jsonnet.FileImporter{},
+			&jpoet.FileImporter{},
 		},
 	})
 	res, err := vm.EvaluateAnonymousSnippet("main.jsonnet", fmt.Sprintf(`
