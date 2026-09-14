@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.23.1](https://github.com/marcbran/jpoet/compare/v0.23.0...v0.23.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* close sink channels ([#162](https://github.com/marcbran/jpoet/issues/162)) ([8109d79](https://github.com/marcbran/jpoet/commit/8109d79861e4e626f0d0492e54a217d011e78e45))
+* importstr inline ([#160](https://github.com/marcbran/jpoet/issues/160)) ([90d0a36](https://github.com/marcbran/jpoet/commit/90d0a367d5458796aeec0f7fa431bcc379bc32f2))
+
 ## [0.23.0](https://github.com/marcbran/jpoet/compare/v0.22.0...v0.23.0) (2026-09-13)
 
 
