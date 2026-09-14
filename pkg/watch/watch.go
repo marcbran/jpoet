@@ -77,6 +77,7 @@ func New(env *jpoet.Environment) (*Environment, error) {
 
 func (we *Environment) Close() error {
 	err := we.lifecycle.Close()
+	we.watches.close()
 	we.invocations.close()
 	return err
 }
@@ -114,7 +115,7 @@ func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
 	var ch chan Result
 	if c.valueOutput != nil {
 		ch = make(chan Result, 1)
-		s = channelSink{ch: ch}
+		s = &channelSink{ch: ch}
 	} else {
 		s = fileSink{path: c.fileOutput}
 	}
@@ -170,6 +171,7 @@ func (we *Environment) evalForWatch(c watchConfig) (Result, []pluginInvocation) 
 func (we *Environment) unregisterFunc(key WatchKey, s sink) func() {
 	return func() {
 		we.watches.detach(key, s)
+		s.close()
 	}
 }
 
