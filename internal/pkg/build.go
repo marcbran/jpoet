@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/marcbran/jpoet/pkg/jpoet"
 	"github.com/marcbran/jsonnet-plugin-jsonnet/jsonnet"
@@ -145,14 +146,21 @@ func inlineNode(node ast.Node, filename string, external map[string]bool) error 
 }
 
 func inlineValue(node ast.Node, filename string, external map[string]bool) (ast.Node, error) {
-	imp, ok := node.(*ast.Import)
-	if !ok {
+	switch imp := node.(type) {
+	case *ast.Import:
+		return inlineImport(imp, filename, external)
+	case *ast.ImportStr:
+		return inlineImportStr(imp, filename, external)
+	default:
 		return node, nil
 	}
+}
+
+func inlineImport(imp *ast.Import, filename string, external map[string]bool) (ast.Node, error) {
 	if external[imp.File.Value] {
-		return node, nil
+		return imp, nil
 	}
-	impFilename, err := filepath.Abs(filepath.Join(filepath.Dir(filename), imp.File.Value))
+	impFilename, err := importFilename(imp.File.Value, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -166,4 +174,32 @@ func inlineValue(node ast.Node, filename string, external map[string]bool) (ast.
 		}
 	}
 	return impNode, nil
+}
+
+func inlineImportStr(imp *ast.ImportStr, filename string, external map[string]bool) (ast.Node, error) {
+	if external[imp.File.Value] {
+		return imp, nil
+	}
+	impFilename, err := importFilename(imp.File.Value, filename)
+	if err != nil {
+		return nil, err
+	}
+	b, err := os.ReadFile(impFilename)
+	if err != nil {
+		return nil, err
+	}
+	value := string(b)
+	if !strings.HasSuffix(value, "\n") {
+		value += "\n"
+	}
+	lit := &ast.LiteralString{
+		Value: value,
+		Kind:  ast.StringBlock,
+	}
+	*lit.OpenFodder() = *imp.OpenFodder()
+	return lit, nil
+}
+
+func importFilename(file, filename string) (string, error) {
+	return filepath.Abs(filepath.Join(filepath.Dir(filename), file))
 }
