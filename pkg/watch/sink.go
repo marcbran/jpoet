@@ -3,17 +3,26 @@ package watch
 import (
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type sink interface {
 	deliver(Result)
+	close()
 }
 
 type channelSink struct {
-	ch chan Result
+	ch     chan Result
+	mu     sync.Mutex
+	closed bool
 }
 
-func (s channelSink) deliver(r Result) {
+func (s *channelSink) deliver(r Result) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
 	select {
 	case s.ch <- r:
 	default:
@@ -26,6 +35,16 @@ func (s channelSink) deliver(r Result) {
 		default:
 		}
 	}
+}
+
+func (s *channelSink) close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	s.closed = true
+	close(s.ch)
 }
 
 type fileSink struct {
@@ -52,3 +71,5 @@ func (s fileSink) deliver(r Result) {
 	}
 	_ = os.Rename(tmp.Name(), s.path)
 }
+
+func (s fileSink) close() {}

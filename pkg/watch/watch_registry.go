@@ -112,6 +112,17 @@ func (r *watchRegistry) detach(key WatchKey, s sink) {
 	r.ref(deactivated, -1)
 }
 
+func (r *watchRegistry) close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, entry := range r.entries {
+		for s := range entry.subscribers {
+			s.close()
+		}
+		entry.subscribers = map[sink]struct{}{}
+	}
+}
+
 func (r *watchRegistry) ref(invocations []pluginInvocation, delta int) {
 	for _, inv := range invocations {
 		r.invocations.ref(inv, delta)
