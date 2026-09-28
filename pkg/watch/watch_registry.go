@@ -11,8 +11,8 @@ type watchEntry struct {
 	subscribers map[sink]struct{}
 	idleSince   time.Time
 
-	lastDelivered    string
-	hasLastDelivered bool
+	lastIdentity    string
+	hasLastIdentity bool
 }
 
 type watchRegistry struct {
@@ -74,10 +74,11 @@ func (r *watchRegistry) update(key WatchKey, result Result, invocations []plugin
 		}
 	}
 	entry.invocations = invocations
-	changed = result.Err != nil || !entry.hasLastDelivered || entry.lastDelivered != result.Output
+	identity := identityOf(entry.input.identity, result.Output)
+	changed = result.Err != nil || !entry.hasLastIdentity || entry.lastIdentity != identity
 	if result.Err == nil {
-		entry.lastDelivered = result.Output
-		entry.hasLastDelivered = true
+		entry.lastIdentity = identity
+		entry.hasLastIdentity = true
 	}
 	subs = make([]sink, 0, len(entry.subscribers))
 	for s := range entry.subscribers {
@@ -157,6 +158,17 @@ func (r *watchRegistry) matchingInvocation(change pluginInvocation) []WatchKey {
 		}
 	}
 	return keys
+}
+
+func identityOf(identity WatchIdentity, output string) string {
+	if identity == nil {
+		return output
+	}
+	value, ok := identity(output)
+	if !ok {
+		return output
+	}
+	return value
 }
 
 func containsInvocation(invocations []pluginInvocation, target pluginInvocation) bool {
