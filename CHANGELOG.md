@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/marcbran/jpoet/compare/v0.23.1...v0.24.0) (2026-09-28)
+
+
+### Features
+
+* make identity for watch computable ([#164](https://github.com/marcbran/jpoet/issues/164)) ([7b881ab](https://github.com/marcbran/jpoet/commit/7b881abbbac83095c84f036ebb5ef8df4c2d2cf5))
+
 ## [0.23.1](https://github.com/marcbran/jpoet/compare/v0.23.0...v0.23.1) (2026-09-14)
 
 
