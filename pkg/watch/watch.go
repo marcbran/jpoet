@@ -318,6 +318,8 @@ func (we *Environment) runEviction() {
 
 type WatchKey string
 
+type WatchIdentity func(output string) (string, bool)
+
 type WatchOption func(*watchConfig)
 
 type snippetInput struct {
@@ -331,6 +333,7 @@ type watchConfig struct {
 	fileInput    *string
 	key          WatchKey
 	serialize    *bool
+	identity     WatchIdentity
 
 	valueOutput *valueOutput
 	fileOutput  string
@@ -382,6 +385,12 @@ func WatchWithKey(key WatchKey) WatchOption {
 func WatchSerialize(s bool) WatchOption {
 	return func(c *watchConfig) {
 		c.serialize = &s
+	}
+}
+
+func WatchWithIdentity(identity WatchIdentity) WatchOption {
+	return func(c *watchConfig) {
+		c.identity = identity
 	}
 }
 
