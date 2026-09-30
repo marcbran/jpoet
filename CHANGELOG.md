@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/marcbran/jpoet/compare/v0.24.0...v0.25.0) (2026-09-30)
+
+
+### Features
+
+* support actions ([#166](https://github.com/marcbran/jpoet/issues/166)) ([68f82da](https://github.com/marcbran/jpoet/commit/68f82dafa05e4a0f15831e6836f59b99ffcf438b))
+
 ## [0.24.0](https://github.com/marcbran/jpoet/compare/v0.23.1...v0.24.0) (2026-09-28)
 
 
