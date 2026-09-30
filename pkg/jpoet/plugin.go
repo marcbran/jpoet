@@ -1,11 +1,13 @@
 package jpoet
 
 import (
+	"context"
 	"errors"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/google/go-jsonnet"
 	"github.com/marcbran/jpoet/internal/plugin"
@@ -17,6 +19,7 @@ type Plugin struct {
 	closer      io.Closer
 	middleware  []Middleware
 	watchSource WatchSource
+	actions     map[string]ActionFunc
 }
 
 type WatchSource interface {
@@ -26,6 +29,8 @@ type WatchSource interface {
 }
 
 type InvocationKey string
+
+type ActionFunc func(context.Context, map[string]any) (string, error)
 
 type PluginOption func(*Plugin)
 
@@ -156,6 +161,33 @@ func WithWatchSource(source WatchSource) PluginOption {
 
 func (p *Plugin) WatchSource() WatchSource {
 	return p.watchSource
+}
+
+func WithAction(name string, fn ActionFunc) PluginOption {
+	return func(p *Plugin) {
+		if p.actions == nil {
+			p.actions = make(map[string]ActionFunc)
+		}
+		p.actions[name] = fn
+	}
+}
+
+func (p *Plugin) ActionNames() []string {
+	names := make([]string, 0, len(p.actions))
+	for name := range p.actions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (p *Plugin) Action(name string) (ActionFunc, bool) {
+	action, ok := p.actions[name]
+	return action, ok
+}
+
+func (p *Plugin) Name() string {
+	return p.name
 }
 
 func (p *Plugin) Serve() {
