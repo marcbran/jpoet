@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/marcbran/jpoet/compare/v0.25.0...v0.26.0) (2026-10-21)
+
+
+### Features
+
+* action middleware ([#172](https://github.com/marcbran/jpoet/issues/172)) ([480b39d](https://github.com/marcbran/jpoet/commit/480b39dd7ca8aa2f3eb4b452be84621a90bed68f))
+
 ## [0.25.0](https://github.com/marcbran/jpoet/compare/v0.24.0...v0.25.0) (2026-09-30)
 
 
