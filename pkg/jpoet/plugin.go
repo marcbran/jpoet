@@ -3,6 +3,7 @@ package jpoet
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -14,12 +15,13 @@ import (
 )
 
 type Plugin struct {
-	name        string
-	invoker     plugin.Invoker
-	closer      io.Closer
-	middleware  []Middleware
-	watchSource WatchSource
-	actions     map[string]ActionFunc
+	name             string
+	invoker          plugin.Invoker
+	closer           io.Closer
+	middleware       []Middleware
+	actionMiddleware []ActionMiddleware
+	watchSource      WatchSource
+	actions          map[string]ActionFunc
 }
 
 type WatchSource interface {
@@ -127,6 +129,49 @@ func WithHook(hook InvokeHook) PluginOption {
 	return WithMiddleware(HookMiddleware(hook))
 }
 
+type Executor interface {
+	Exec(ctx context.Context, action string, data map[string]any) (string, error)
+}
+
+type ActionMiddleware func(Executor) Executor
+
+func WithActionMiddleware(middleware ...ActionMiddleware) PluginOption {
+	return func(p *Plugin) {
+		p.actionMiddleware = append(p.actionMiddleware, middleware...)
+	}
+}
+
+type ActionHook func(ctx context.Context, next Executor, action string, data map[string]any) (string, error)
+
+type hookExecutor struct {
+	next Executor
+	hook ActionHook
+}
+
+func (h hookExecutor) Exec(ctx context.Context, action string, data map[string]any) (string, error) {
+	return h.hook(ctx, h.next, action, data)
+}
+
+func ActionHookMiddleware(hook ActionHook) ActionMiddleware {
+	return func(next Executor) Executor {
+		return hookExecutor{next: next, hook: hook}
+	}
+}
+
+func WithActionHook(hook ActionHook) PluginOption {
+	return WithActionMiddleware(ActionHookMiddleware(hook))
+}
+
+type actionTable map[string]ActionFunc
+
+func (t actionTable) Exec(ctx context.Context, action string, data map[string]any) (string, error) {
+	fn, ok := t[action]
+	if !ok {
+		return "", fmt.Errorf("%w: %s", ErrNoSuchAction, action)
+	}
+	return fn(ctx, data)
+}
+
 type multiCloser []io.Closer
 
 func (m multiCloser) Close() error {
@@ -182,8 +227,16 @@ func (p *Plugin) ActionNames() []string {
 }
 
 func (p *Plugin) Action(name string) (ActionFunc, bool) {
-	action, ok := p.actions[name]
-	return action, ok
+	if _, ok := p.actions[name]; !ok {
+		return nil, false
+	}
+	executor := Executor(actionTable(p.actions))
+	for _, m := range p.actionMiddleware {
+		executor = m(executor)
+	}
+	return func(ctx context.Context, data map[string]any) (string, error) {
+		return executor.Exec(ctx, name, data)
+	}, true
 }
 
 func (p *Plugin) Name() string {
