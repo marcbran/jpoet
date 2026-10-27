@@ -46,7 +46,20 @@ type Result struct {
 //go:embed lib
 var lib embed.FS
 
-func RunDir(dirname string) (*Run, error) {
+type Option func(*config)
+
+type config struct {
+	plugins []*jpoet.Plugin
+}
+
+// WithPlugins registers plugins so tests can call them through std.native.
+func WithPlugins(plugins ...*jpoet.Plugin) Option {
+	return func(c *config) {
+		c.plugins = append(c.plugins, plugins...)
+	}
+}
+
+func RunDir(dirname string, opts ...Option) (*Run, error) {
 	var run Run
 	var runErr error
 	err := filepath.WalkDir(dirname, func(path string, d fs.DirEntry, err error) error {
@@ -56,7 +69,7 @@ func RunDir(dirname string) (*Run, error) {
 		if !strings.HasSuffix(path, "_tests.libsonnet") {
 			return nil
 		}
-		r, err := RunFile(path)
+		r, err := RunFile(path, opts...)
 		if err != nil {
 			runErr = err
 			_, err := os.Stderr.WriteString(err.Error())
@@ -79,8 +92,15 @@ func RunDir(dirname string) (*Run, error) {
 	return &run, nil
 }
 
-func RunFile(filename string) (*Run, error) {
+func RunFile(filename string, opts ...Option) (*Run, error) {
+	c := config{}
+	for _, opt := range opts {
+		opt(&c)
+	}
 	vm := jsonnet.MakeVM()
+	for _, p := range c.plugins {
+		vm.NativeFunction(p.NativeFunction())
+	}
 	vm.Importer(jpoet.CompoundImporter{
 		Importers: []jsonnet.Importer{
 			&jpoet.FSImporter{Fs: lib},
