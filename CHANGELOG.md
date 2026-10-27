@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/marcbran/jpoet/compare/v0.26.0...v0.27.0) (2026-10-27)
+
+
+### Features
+
+* support plugin usage during tests ([#175](https://github.com/marcbran/jpoet/issues/175)) ([f2a4bfa](https://github.com/marcbran/jpoet/commit/f2a4bfae384621eb29b97da1ab87863733bc0a4a))
+
 ## [0.26.0](https://github.com/marcbran/jpoet/compare/v0.25.0...v0.26.0) (2026-10-21)
 
 
