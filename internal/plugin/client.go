@@ -82,6 +82,14 @@ func (c grpcClientInvoker) Invoke(funcName string, args []any) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(resp.Failure) > 0 {
+		var f Failure
+		err = json.Unmarshal(resp.Failure, &f)
+		if err != nil {
+			return nil, err
+		}
+		return nil, &f
+	}
 	var res any
 	err = json.Unmarshal(resp.Value, &res)
 	if err != nil {

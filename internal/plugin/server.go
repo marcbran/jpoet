@@ -40,6 +40,13 @@ func (s grpcServerInvoker) Invoke(
 		return nil, err
 	}
 	resp, err := s.impl.Invoke(request.FuncName, args)
+	if f, ok := asFailure(err); ok {
+		b, err := json.Marshal(f)
+		if err != nil {
+			return nil, err
+		}
+		return &proto.InvokeResponse{Failure: b}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
