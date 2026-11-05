@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/marcbran/jpoet/compare/v0.27.0...v0.28.0) (2026-11-05)
+
+
+### Features
+
+* plugin failure handling ([#178](https://github.com/marcbran/jpoet/issues/178)) ([d0f5dab](https://github.com/marcbran/jpoet/commit/d0f5dab2d78be693f35ee5bed595f5e399aedd7c))
+
 ## [0.27.0](https://github.com/marcbran/jpoet/compare/v0.26.0...v0.27.0) (2026-10-27)
 
 
