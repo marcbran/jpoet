@@ -55,7 +55,11 @@ func (i Consumer) Function() *jsonnet.NativeFunction {
 			if !ok {
 				return nil, fmt.Errorf("args must be an array")
 			}
-			return i.invoker.Invoke(funcName, args)
+			value, err := i.invoker.Invoke(funcName, args)
+			if f, ok := asFailure(err); ok {
+				return f.Value(), nil
+			}
+			return value, err
 		},
 	}
 }

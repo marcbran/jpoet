@@ -11,6 +11,7 @@ message InvokeRequest {
 
 message InvokeResponse {
     bytes value = 1;
+    bytes failure = 2;
 }
 
 service Invoker {
