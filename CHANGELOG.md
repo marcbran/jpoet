@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/marcbran/jpoet/compare/v0.29.0...v0.30.0) (2026-11-07)
+
+
+### Features
+
+* add jpath flag to test and pkg build ([#183](https://github.com/marcbran/jpoet/issues/183)) ([ee2c410](https://github.com/marcbran/jpoet/commit/ee2c410494f3a4bf6b5d3fa325e5eaab6dd35349))
+
 ## [0.29.0](https://github.com/marcbran/jpoet/compare/v0.28.0...v0.29.0) (2026-11-07)
 
 
