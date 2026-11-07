@@ -25,7 +25,11 @@ var testCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		run, err := test.RunDir(dirname)
+		jpaths, err := cmd.Flags().GetStringArray("jpath")
+		if err != nil {
+			return err
+		}
+		run, err := test.RunDir(dirname, test.WithJPaths(jpaths...))
 		if err != nil {
 			return err
 		}
@@ -66,4 +70,5 @@ var testCmd = &cobra.Command{
 
 func init() {
 	testCmd.Flags().BoolP("json", "j", false, "Outputs the test results in JSON")
+	testCmd.Flags().StringArrayP("jpath", "J", nil, "Additional library search directories")
 }

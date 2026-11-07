@@ -23,8 +23,12 @@ var buildCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		jpaths, err := cmd.Flags().GetStringArray("jpath")
+		if err != nil {
+			return err
+		}
 		buildDir = filepath.Join(pkgDir, buildDir)
-		err = pkg.Build(cmd.Context(), pkgDir, buildDir)
+		err = pkg.Build(cmd.Context(), pkgDir, buildDir, jpaths)
 		if err != nil {
 			return err
 		}
@@ -34,4 +38,5 @@ var buildCmd = &cobra.Command{
 
 func init() {
 	buildCmd.Flags().StringP("build", "b", "build", "The path to the build directory, relative to the package directory")
+	buildCmd.Flags().StringArrayP("jpath", "J", nil, "Additional library search directories for imports that are inlined")
 }
