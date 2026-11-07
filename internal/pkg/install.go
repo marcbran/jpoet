@@ -19,7 +19,7 @@ import (
 )
 
 func Install(ctx context.Context, pkgDir string) error {
-	cfg, err := ResolvePkgConfig(pkgDir)
+	cfg, err := ResolvePkgConfig(ctx, pkgDir)
 	if err != nil {
 		return err
 	}

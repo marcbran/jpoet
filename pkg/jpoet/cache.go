@@ -1,6 +1,7 @@
 package jpoet
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"time"
@@ -67,8 +68,8 @@ func (c *Cache) store(funcName string, args []any, value any, ttl time.Duration)
 }
 
 func (c *Cache) Writer(ttl func(funcName string, args []any) time.Duration) Middleware {
-	return HookMiddleware(func(next Invoker, funcName string, args []any) (any, error) {
-		result, err := next.Invoke(funcName, args)
+	return HookMiddleware(func(ctx context.Context, next Invoker, funcName string, args []any) (any, error) {
+		result, err := next.Invoke(ctx, funcName, args)
 		if err == nil {
 			c.store(funcName, args, result, ttl(funcName, args))
 		}
@@ -77,10 +78,10 @@ func (c *Cache) Writer(ttl func(funcName string, args []any) time.Duration) Midd
 }
 
 func (c *Cache) Reader() Middleware {
-	return HookMiddleware(func(next Invoker, funcName string, args []any) (any, error) {
+	return HookMiddleware(func(ctx context.Context, next Invoker, funcName string, args []any) (any, error) {
 		if v, ok := c.get(funcName, args); ok {
 			return v, nil
 		}
-		return next.Invoke(funcName, args)
+		return next.Invoke(ctx, funcName, args)
 	})
 }

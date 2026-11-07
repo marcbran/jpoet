@@ -25,7 +25,7 @@ func manifestRepo(ctx context.Context, files map[string]string) (string, error) 
 		return "", err
 	}
 
-	err = jpoet.Eval(
+	err = jpoet.Eval(ctx,
 		jpoet.FileImport([]string{}),
 		jpoet.FSImport(lib),
 		jpoet.FSImport(imports.Fs),

@@ -39,7 +39,7 @@ func (s grpcServerInvoker) Invoke(
 	if err != nil {
 		return nil, err
 	}
-	resp, err := s.impl.Invoke(request.FuncName, args)
+	resp, err := s.impl.Invoke(ctx, request.FuncName, args)
 	if f, ok := asFailure(err); ok {
 		b, err := json.Marshal(f)
 		if err != nil {
@@ -61,13 +61,11 @@ func (s grpcServerInvoker) Invoke(
 
 type localInvoker struct {
 	functionNames string
-	functions     map[string]jsonnet.NativeFunction
+	functions     map[string]Function
 }
 
-func NewLocalInvoker(
-	functions []jsonnet.NativeFunction,
-) Invoker {
-	functionMap := make(map[string]jsonnet.NativeFunction)
+func NewLocalInvoker(functions []Function) Invoker {
+	functionMap := make(map[string]Function)
 	var functionNames []string
 	for _, f := range functions {
 		functionNames = append(functionNames, f.Name)
@@ -80,12 +78,26 @@ func NewLocalInvoker(
 	}
 }
 
-func (i localInvoker) Invoke(funcName string, args []any) (any, error) {
+func NativeFunctions(natives []jsonnet.NativeFunction) []Function {
+	functions := make([]Function, len(natives))
+	for i, nf := range natives {
+		inner := nf.Func
+		functions[i] = Function{
+			Name: nf.Name,
+			Func: func(_ context.Context, args []any) (any, error) {
+				return inner(args)
+			},
+		}
+	}
+	return functions
+}
+
+func (i localInvoker) Invoke(ctx context.Context, funcName string, args []any) (any, error) {
 	f, ok := i.functions[funcName]
 	if !ok {
 		return "", fmt.Errorf("no such function: %s, available functions: %s", funcName, i.functionNames)
 	}
-	res, err := f.Func(args)
+	res, err := f.Func(ctx, args)
 	if err != nil {
 		return "", err
 	}

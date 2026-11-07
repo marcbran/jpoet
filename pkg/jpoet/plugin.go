@@ -16,7 +16,8 @@ import (
 
 type Plugin struct {
 	name             string
-	invoker          plugin.Invoker
+	functions        []Function
+	client           plugin.Invoker
 	closer           io.Closer
 	middleware       []Middleware
 	actionMiddleware []ActionMiddleware
@@ -34,17 +35,25 @@ type InvocationKey string
 
 type ActionFunc func(context.Context, map[string]any) (string, error)
 
+type Function = plugin.Function
+
 type PluginOption func(*Plugin)
 
 func NewPlugin(name string, functions []jsonnet.NativeFunction, opts ...PluginOption) *Plugin {
 	p := &Plugin{
-		name:    name,
-		invoker: plugin.NewLocalInvoker(functions),
+		name:      name,
+		functions: plugin.NativeFunctions(functions),
 	}
 	for _, opt := range opts {
 		opt(p)
 	}
 	return p
+}
+
+func WithFunctions(functions ...Function) PluginOption {
+	return func(p *Plugin) {
+		p.functions = append(p.functions, functions...)
+	}
 }
 
 func NewClientPlugin(name string, path string, opts ...PluginOption) (*Plugin, error) {
@@ -53,12 +62,16 @@ func NewClientPlugin(name string, path string, opts ...PluginOption) (*Plugin, e
 		return nil, err
 	}
 	p := &Plugin{
-		name:    name,
-		invoker: invoker,
-		closer:  invoker,
+		name:   name,
+		client: invoker,
+		closer: invoker,
 	}
 	for _, opt := range opts {
 		opt(p)
+	}
+	if len(p.functions) > 0 {
+		_ = invoker.Close()
+		return nil, fmt.Errorf("plugin %s: functions cannot be added to a client plugin", name)
 	}
 	return p, nil
 }
@@ -108,15 +121,15 @@ func WithMiddleware(middleware ...Middleware) PluginOption {
 	}
 }
 
-type InvokeHook func(next Invoker, funcName string, args []any) (any, error)
+type InvokeHook func(ctx context.Context, next Invoker, funcName string, args []any) (any, error)
 
 type hookInvoker struct {
 	next Invoker
 	hook InvokeHook
 }
 
-func (h hookInvoker) Invoke(funcName string, args []any) (any, error) {
-	return h.hook(h.next, funcName, args)
+func (h hookInvoker) Invoke(ctx context.Context, funcName string, args []any) (any, error) {
+	return h.hook(ctx, h.next, funcName, args)
 }
 
 func HookMiddleware(hook InvokeHook) Middleware {
@@ -244,15 +257,26 @@ func (p *Plugin) Name() string {
 }
 
 func (p *Plugin) Serve() {
-	plugin.NewConsumer(p.name, p.invoker).Serve()
+	plugin.NewConsumer(p.name, p.baseInvoker()).Serve()
 }
 
 func (p *Plugin) NativeFunction() *jsonnet.NativeFunction {
-	invoker := plugin.Invoker(p.invoker)
+	return p.nativeFunction(context.Background)
+}
+
+func (p *Plugin) nativeFunction(contextOf func() context.Context) *jsonnet.NativeFunction {
+	invoker := p.baseInvoker()
 	for _, m := range p.middleware {
 		invoker = m(invoker)
 	}
-	return plugin.NewConsumer(p.name, invoker).Function()
+	return plugin.NewConsumer(p.name, invoker).Function(contextOf)
+}
+
+func (p *Plugin) baseInvoker() Invoker {
+	if p.client != nil {
+		return p.client
+	}
+	return plugin.NewLocalInvoker(p.functions)
 }
 
 func (p *Plugin) Close() error {

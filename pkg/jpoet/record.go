@@ -1,6 +1,8 @@
 package jpoet
 
 import (
+	"context"
+
 	"github.com/google/go-jsonnet"
 )
 
@@ -29,8 +31,16 @@ func (r *invocationRecorder) take() []Invocation {
 	return invocations
 }
 
-func (p *Plugin) recordingNativeFunction(invocations *invocationRecorder) *jsonnet.NativeFunction {
-	nf := p.NativeFunction()
+type evalContext struct {
+	ctx context.Context
+}
+
+func (c *evalContext) get() context.Context {
+	return c.ctx
+}
+
+func (p *Plugin) recordingNativeFunction(invocations *invocationRecorder, current *evalContext) *jsonnet.NativeFunction {
+	nf := p.nativeFunction(current.get)
 	inner := nf.Func
 	wrapped := *nf
 	wrapped.Func = func(input []any) (any, error) {

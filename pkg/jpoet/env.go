@@ -1,6 +1,7 @@
 package jpoet
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"sync"
@@ -26,6 +27,7 @@ func Env(opts ...EnvOption) *Environment {
 
 		invocations: c.invocations,
 		paths:       c.paths,
+		current:     c.current,
 	}
 	e.lifecycle = NewLifecycle(nil)
 	return e
@@ -41,6 +43,7 @@ type Environment struct {
 
 	invocations *invocationRecorder
 	paths       *pathRecorder
+	current     *evalContext
 
 	lifecycle *Lifecycle
 }
@@ -80,6 +83,7 @@ type envConfig struct {
 
 	invocations *invocationRecorder
 	paths       *pathRecorder
+	current     *evalContext
 }
 
 func newEnvConfig() envConfig {
@@ -88,6 +92,7 @@ func newEnvConfig() envConfig {
 
 		invocations: &invocationRecorder{},
 		paths:       &pathRecorder{},
+		current:     &evalContext{ctx: context.Background()},
 	}
 }
 
@@ -159,7 +164,7 @@ func EnvWithNativeFunction(f *jsonnet.NativeFunction) EnvOption {
 func EnvWithPlugin(p *Plugin) EnvOption {
 	return func(c *envConfig) {
 		c.plugins = append(c.plugins, p)
-		nf := p.recordingNativeFunction(c.invocations)
+		nf := p.recordingNativeFunction(c.invocations, c.current)
 		EnvWithNativeFunction(nf)(c)
 	}
 }

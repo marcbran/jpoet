@@ -10,7 +10,7 @@ import (
 )
 
 func Remove(ctx context.Context, pkgDir string, authMethod transport.AuthMethod) error {
-	cfg, err := pkg.ResolvePkgConfig(pkgDir)
+	cfg, err := pkg.ResolvePkgConfig(ctx, pkgDir)
 	if err != nil {
 		return err
 	}

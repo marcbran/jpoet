@@ -38,7 +38,7 @@ func NewAuthMethodFromEnv() (transport.AuthMethod, error) {
 }
 
 func Push(ctx context.Context, pkgDir, buildDir string, authMethod transport.AuthMethod) error {
-	cfg, err := pkg.ResolvePkgConfig(pkgDir)
+	cfg, err := pkg.ResolvePkgConfig(ctx, pkgDir)
 	if err != nil {
 		return err
 	}

@@ -57,8 +57,8 @@ func NewClientInvoker(
 	}, nil
 }
 
-func (c *client) Invoke(funcName string, args []any) (any, error) {
-	return c.invoker.Invoke(funcName, args)
+func (c *client) Invoke(ctx context.Context, funcName string, args []any) (any, error) {
+	return c.invoker.Invoke(ctx, funcName, args)
 }
 
 func (c *client) Close() error {
@@ -70,12 +70,12 @@ type grpcClientInvoker struct {
 	client proto.InvokerClient
 }
 
-func (c grpcClientInvoker) Invoke(funcName string, args []any) (any, error) {
+func (c grpcClientInvoker) Invoke(ctx context.Context, funcName string, args []any) (any, error) {
 	b, err := json.Marshal(args)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.client.Invoke(context.Background(), &proto.InvokeRequest{
+	resp, err := c.client.Invoke(ctx, &proto.InvokeRequest{
 		FuncName: funcName,
 		Args:     b,
 	})

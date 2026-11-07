@@ -2,6 +2,7 @@ package watch
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -82,10 +83,10 @@ func (we *Environment) Close() error {
 	return err
 }
 
-func (we *Environment) Eval(opts ...jpoet.EvalOption) error {
+func (we *Environment) Eval(ctx context.Context, opts ...jpoet.EvalOption) error {
 	var invocations []jpoet.Invocation
 	var paths []string
-	err := we.Environment.Eval(append(opts, jpoet.EvalInvocations(&invocations), jpoet.EvalImportedPaths(&paths))...)
+	err := we.Environment.Eval(ctx, append(opts, jpoet.EvalInvocations(&invocations), jpoet.EvalImportedPaths(&paths))...)
 	we.touchInvocations(toInvocations(invocations))
 	we.dirWatcher.track(paths)
 	return err
@@ -96,7 +97,7 @@ type Result struct {
 	Err    error
 }
 
-func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
+func (we *Environment) Watch(ctx context.Context, opts ...WatchOption) (func(), error) {
 	c := watchConfig{}
 	for _, opt := range opts {
 		opt(&c)
@@ -121,7 +122,7 @@ func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
 	}
 
 	we.watches.ensure(c.key, c, s)
-	initial, _, _ := we.evaluate(c.key)
+	initial, _, _ := we.evaluate(ctx, c.key)
 
 	if c.valueOutput != nil {
 		*c.valueOutput.initial = initial
@@ -137,7 +138,7 @@ func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
 	return unregister, nil
 }
 
-func (we *Environment) evalForWatch(c watchConfig) (Result, []pluginInvocation) {
+func (we *Environment) evalForWatch(ctx context.Context, c watchConfig) (Result, []pluginInvocation) {
 	serialize := true
 	if c.serialize != nil {
 		serialize = *c.serialize
@@ -158,7 +159,7 @@ func (we *Environment) evalForWatch(c watchConfig) (Result, []pluginInvocation) 
 	var paths []string
 	opts = append(opts, jpoet.EvalImportedPaths(&paths))
 
-	err := we.Environment.Eval(opts...)
+	err := we.Environment.Eval(ctx, opts...)
 	invocations := toInvocations(recorded)
 	we.touchInvocations(invocations)
 	we.dirWatcher.track(paths)
@@ -281,8 +282,9 @@ func (we *Environment) handleDirtyPaths(paths map[string]struct{}) bool {
 }
 
 func (we *Environment) reevaluate(key WatchKey) Result {
-	result, subs, changed := we.evaluate(key)
-	if !changed {
+	ctx := we.lifecycle.Context()
+	result, subs, changed := we.evaluate(ctx, key)
+	if ctx.Err() != nil || !changed {
 		return result
 	}
 	for _, s := range subs {
@@ -291,13 +293,13 @@ func (we *Environment) reevaluate(key WatchKey) Result {
 	return result
 }
 
-func (we *Environment) evaluate(key WatchKey) (Result, []sink, bool) {
+func (we *Environment) evaluate(ctx context.Context, key WatchKey) (Result, []sink, bool) {
 	input, ok := we.watches.input(key)
 	if !ok {
 		return Result{}, nil, false
 	}
 
-	result, invocations := we.evalForWatch(input)
+	result, invocations := we.evalForWatch(ctx, input)
 	subs, changed := we.watches.update(key, result, invocations)
 	return result, subs, changed
 }
