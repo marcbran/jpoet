@@ -26,7 +26,7 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		return errors.New("main.libsonnet not found")
 	}
 
-	cfg, err := ResolvePkgConfig(pkgDir)
+	cfg, err := ResolvePkgConfig(ctx, pkgDir)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 		}
 	}
 
-	err = jpoet.Eval(
+	err = jpoet.Eval(ctx,
 		jpoet.FileImport([]string{}),
 		jpoet.FSImport(lib),
 		jpoet.FSImport(imports.Fs),

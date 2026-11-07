@@ -13,6 +13,8 @@ require (
 	github.com/marcbran/jsonnet-plugin-jsonnet v0.4.0
 	github.com/marcbran/jsonnet-plugin-markdown v0.3.0
 	github.com/spf13/cobra v1.10.2
+	github.com/stretchr/testify v1.12.1
+	golang.org/x/sync v0.24.0
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 )

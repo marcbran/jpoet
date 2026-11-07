@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"embed"
 	"errors"
 	"os"
@@ -42,7 +43,7 @@ type GithubPlugin struct {
 	Version string `json:"version"`
 }
 
-func ResolvePkgConfig(pkgDir string) (Config, error) {
+func ResolvePkgConfig(ctx context.Context, pkgDir string) (Config, error) {
 	pkgFile := filepath.Join(pkgDir, "pkg.libsonnet")
 	_, err := os.Stat(pkgFile)
 	if err != nil {
@@ -57,7 +58,7 @@ func ResolvePkgConfig(pkgDir string) (Config, error) {
 	}
 
 	var config Config
-	err = jpoet.Eval(
+	err = jpoet.Eval(ctx,
 		jpoet.FSImport(lib),
 		jpoet.FSImport(imports.Fs),
 		jpoet.StringImport("input/pkg.libsonnet", string(pkgCode)),

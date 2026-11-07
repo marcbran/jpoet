@@ -1,6 +1,8 @@
 package jpoet
 
 import (
+	"context"
+
 	"github.com/google/go-jsonnet"
 )
 
@@ -9,28 +11,30 @@ type Invocation struct {
 	Plugin *Plugin
 }
 
-type invocationRecorder struct {
+type evalState struct {
+	ctx         context.Context
 	invocations []Invocation
+	paths       []string
 }
 
-func (r *invocationRecorder) record(inv Invocation) {
-	if r == nil {
-		return
-	}
-	r.invocations = append(r.invocations, inv)
+type evalSlot struct {
+	state *evalState
 }
 
-func (r *invocationRecorder) take() []Invocation {
-	if r == nil {
-		return nil
-	}
-	invocations := r.invocations
-	r.invocations = nil
-	return invocations
+func (s *evalSlot) context() context.Context {
+	return s.state.ctx
 }
 
-func (p *Plugin) recordingNativeFunction(invocations *invocationRecorder) *jsonnet.NativeFunction {
-	nf := p.NativeFunction()
+func (s *evalSlot) recordInvocation(inv Invocation) {
+	s.state.invocations = append(s.state.invocations, inv)
+}
+
+func (s *evalSlot) recordPath(path string) {
+	s.state.paths = append(s.state.paths, path)
+}
+
+func (p *Plugin) recordingNativeFunction(slot *evalSlot) *jsonnet.NativeFunction {
+	nf := p.nativeFunction(slot.context)
 	inner := nf.Func
 	wrapped := *nf
 	wrapped.Func = func(input []any) (any, error) {
@@ -38,42 +42,22 @@ func (p *Plugin) recordingNativeFunction(invocations *invocationRecorder) *jsonn
 		if err == nil && len(input) == 2 && p.watchSource != nil {
 			funcName, _ := input[0].(string)
 			args, _ := input[1].([]any)
-			invocations.record(Invocation{Key: p.watchSource.InvocationKey(funcName, args), Plugin: p})
+			slot.recordInvocation(Invocation{Key: p.watchSource.InvocationKey(funcName, args), Plugin: p})
 		}
 		return result, err
 	}
 	return &wrapped
 }
 
-type pathRecorder struct {
-	paths []string
-}
-
-func (r *pathRecorder) record(path string) {
-	if r == nil {
-		return
-	}
-	r.paths = append(r.paths, path)
-}
-
-func (r *pathRecorder) take() []string {
-	if r == nil {
-		return nil
-	}
-	paths := r.paths
-	r.paths = nil
-	return paths
-}
-
 type recordingImporter struct {
-	inner    jsonnet.Importer
-	recorder *pathRecorder
+	inner jsonnet.Importer
+	slot  *evalSlot
 }
 
 func (r *recordingImporter) Import(importedFrom, importedPath string) (jsonnet.Contents, string, error) {
 	contents, foundAt, err := r.inner.Import(importedFrom, importedPath)
 	if err == nil {
-		r.recorder.record(foundAt)
+		r.slot.recordPath(foundAt)
 	}
 	return contents, foundAt, err
 }

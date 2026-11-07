@@ -19,7 +19,12 @@ var handshakeConfig = plugin.HandshakeConfig{
 }
 
 type Invoker interface {
-	Invoke(funcName string, args []any) (any, error)
+	Invoke(ctx context.Context, funcName string, args []any) (any, error)
+}
+
+type Function struct {
+	Name string
+	Func func(ctx context.Context, args []any) (any, error)
 }
 
 type InvokeCloser interface {
@@ -39,7 +44,7 @@ func NewConsumer(name string, invoker Invoker) Consumer {
 	}
 }
 
-func (i Consumer) Function() *jsonnet.NativeFunction {
+func (i Consumer) Function(contextOf func() context.Context) *jsonnet.NativeFunction {
 	return &jsonnet.NativeFunction{
 		Name:   fmt.Sprintf("invoke:%s", i.name),
 		Params: ast.Identifiers{"funcName", "args"},
@@ -55,7 +60,12 @@ func (i Consumer) Function() *jsonnet.NativeFunction {
 			if !ok {
 				return nil, fmt.Errorf("args must be an array")
 			}
-			value, err := i.invoker.Invoke(funcName, args)
+			ctx := contextOf()
+			err := ctx.Err()
+			if err != nil {
+				return nil, err
+			}
+			value, err := i.invoker.Invoke(ctx, funcName, args)
 			if f, ok := asFailure(err); ok {
 				return f.Value(), nil
 			}

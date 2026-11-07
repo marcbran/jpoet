@@ -1,12 +1,15 @@
 package jpoet
 
 import (
+	"context"
 	"errors"
 	"io/fs"
-	"sync"
+	"math"
+	"runtime"
 
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
+	"golang.org/x/sync/semaphore"
 )
 
 var ErrEnvironmentClosed = errors.New("environment is closed")
@@ -16,16 +19,14 @@ func Env(opts ...EnvOption) *Environment {
 	for _, opt := range opts {
 		opt(&c)
 	}
-	vm, importer := c.build()
+	importer := c.importer()
 	e := &Environment{
 		plugins:   c.plugins,
 		importers: c.importers,
-		importer:  importer,
-
-		vm: vm,
-
-		invocations: c.invocations,
-		paths:       c.paths,
+		pool: newVMPool(c.poolSize, func() *pooledVM {
+			return c.buildVM(importer)
+		}),
+		flushBarrier: semaphore.NewWeighted(flushWeight),
 	}
 	e.lifecycle = NewLifecycle(nil)
 	return e
@@ -34,13 +35,10 @@ func Env(opts ...EnvOption) *Environment {
 type Environment struct {
 	plugins   []*Plugin
 	importers []jsonnet.Importer
-	importer  jsonnet.Importer
 
-	vm   *jsonnet.VM
-	vmMu sync.Mutex
-
-	invocations *invocationRecorder
-	paths       *pathRecorder
+	pool         *vmPool
+	flushBarrier *semaphore.Weighted
+	generation   uint64
 
 	lifecycle *Lifecycle
 }
@@ -53,17 +51,17 @@ type flushableImporter interface {
 	FlushCache()
 }
 
+const flushWeight = math.MaxInt32
+
 func (e *Environment) FlushCache() {
-	e.vmMu.Lock()
-	defer e.vmMu.Unlock()
+	_ = e.flushBarrier.Acquire(context.Background(), flushWeight)
+	defer e.flushBarrier.Release(flushWeight)
 	for _, imp := range e.importers {
 		if f, ok := imp.(flushableImporter); ok {
 			f.FlushCache()
 		}
 	}
-	if e.importer != nil {
-		e.vm.Importer(e.importer)
-	}
+	e.generation++
 }
 
 func (e *Environment) Close() error {
@@ -77,36 +75,48 @@ type envConfig struct {
 	plugins   []*Plugin
 	importers []jsonnet.Importer
 	contents  map[string]jsonnet.Contents
-
-	invocations *invocationRecorder
-	paths       *pathRecorder
+	poolSize  int
 }
 
 func newEnvConfig() envConfig {
 	return envConfig{
 		contents: make(map[string]jsonnet.Contents),
-
-		invocations: &invocationRecorder{},
-		paths:       &pathRecorder{},
+		poolSize: runtime.GOMAXPROCS(0),
 	}
 }
 
-func (c *envConfig) build() (*jsonnet.VM, jsonnet.Importer) {
-	vm := jsonnet.MakeVM()
-	for _, opt := range c.vmOpts {
-		opt(vm)
-	}
-
+func (c *envConfig) importer() jsonnet.Importer {
 	importers := c.importers
 	if len(c.contents) > 0 {
 		importers = append(importers, &MemoryImporter{Data: c.contents})
 	}
 	if len(importers) == 0 {
-		return vm, nil
+		return nil
 	}
-	importer := &recordingImporter{inner: CompoundImporter{Importers: importers}, recorder: c.paths}
-	vm.Importer(importer)
-	return vm, importer
+	return CompoundImporter{Importers: importers}
+}
+
+func (c *envConfig) buildVM(importer jsonnet.Importer) *pooledVM {
+	vm := jsonnet.MakeVM()
+	for _, opt := range c.vmOpts {
+		opt(vm)
+	}
+	slot := &evalSlot{}
+	for _, p := range c.plugins {
+		vm.NativeFunction(p.recordingNativeFunction(slot))
+	}
+	v := &pooledVM{vm: vm, slot: slot}
+	if importer != nil {
+		v.importer = &recordingImporter{inner: importer, slot: slot}
+		vm.Importer(v.importer)
+	}
+	return v
+}
+
+func EnvPoolSize(size int) EnvOption {
+	return func(c *envConfig) {
+		c.poolSize = size
+	}
 }
 
 func EnvTLAVar(key, val string) EnvOption {
@@ -159,8 +169,6 @@ func EnvWithNativeFunction(f *jsonnet.NativeFunction) EnvOption {
 func EnvWithPlugin(p *Plugin) EnvOption {
 	return func(c *envConfig) {
 		c.plugins = append(c.plugins, p)
-		nf := p.recordingNativeFunction(c.invocations)
-		EnvWithNativeFunction(nf)(c)
 	}
 }
 

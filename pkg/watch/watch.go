@@ -2,6 +2,7 @@ package watch
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -82,10 +83,10 @@ func (we *Environment) Close() error {
 	return err
 }
 
-func (we *Environment) Eval(opts ...jpoet.EvalOption) error {
+func (we *Environment) Eval(ctx context.Context, opts ...jpoet.EvalOption) error {
 	var invocations []jpoet.Invocation
 	var paths []string
-	err := we.Environment.Eval(append(opts, jpoet.EvalInvocations(&invocations), jpoet.EvalImportedPaths(&paths))...)
+	err := we.Environment.Eval(ctx, append(opts, jpoet.EvalInvocations(&invocations), jpoet.EvalImportedPaths(&paths))...)
 	we.touchInvocations(toInvocations(invocations))
 	we.dirWatcher.track(paths)
 	return err
@@ -96,7 +97,7 @@ type Result struct {
 	Err    error
 }
 
-func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
+func (we *Environment) Watch(ctx context.Context, opts ...WatchOption) (func(), error) {
 	c := watchConfig{}
 	for _, opt := range opts {
 		opt(&c)
@@ -120,14 +121,17 @@ func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
 		s = fileSink{path: c.fileOutput}
 	}
 
-	we.watches.ensure(c.key, c, s)
-	initial, _, _ := we.evaluate(c.key)
+	input, seq, first := we.watches.ensure(c.key, c, s)
+	initial, invocations := we.evalForWatch(ctx, input)
+	if first && ctx.Err() == nil {
+		we.watches.update(c.key, seq, initial, invocations)
+	}
 
 	if c.valueOutput != nil {
 		*c.valueOutput.initial = initial
 		*c.valueOutput.updates = ch
 	} else {
-		s.deliver(initial)
+		we.watches.deliver(c.key, seq, initial, []sink{s})
 	}
 
 	unregister := we.unregisterFunc(c.key, s)
@@ -137,7 +141,7 @@ func (we *Environment) Watch(opts ...WatchOption) (func(), error) {
 	return unregister, nil
 }
 
-func (we *Environment) evalForWatch(c watchConfig) (Result, []pluginInvocation) {
+func (we *Environment) evalForWatch(ctx context.Context, c watchConfig) (Result, []pluginInvocation) {
 	serialize := true
 	if c.serialize != nil {
 		serialize = *c.serialize
@@ -158,7 +162,7 @@ func (we *Environment) evalForWatch(c watchConfig) (Result, []pluginInvocation) 
 	var paths []string
 	opts = append(opts, jpoet.EvalImportedPaths(&paths))
 
-	err := we.Environment.Eval(opts...)
+	err := we.Environment.Eval(ctx, opts...)
 	invocations := toInvocations(recorded)
 	we.touchInvocations(invocations)
 	we.dirWatcher.track(paths)
@@ -264,7 +268,7 @@ func (we *Environment) handleDirtyInvocations(invocations map[pluginInvocation]s
 	}
 	for key := range dirtyKeys {
 		if we.watches.hasSubscribers(key) {
-			we.reevaluate(key)
+			we.lifecycle.Go(func() { we.reevaluate(key) })
 		}
 	}
 }
@@ -273,33 +277,29 @@ func (we *Environment) handleDirtyPaths(paths map[string]struct{}) bool {
 	if len(paths) == 0 {
 		return false
 	}
+	we.watches.cancelRunning()
 	we.FlushCache()
 	for _, key := range we.watches.subscribedKeys() {
-		we.reevaluate(key)
+		we.lifecycle.Go(func() { we.reevaluate(key) })
 	}
 	return true
 }
 
-func (we *Environment) reevaluate(key WatchKey) Result {
-	result, subs, changed := we.evaluate(key)
-	if !changed {
-		return result
-	}
-	for _, s := range subs {
-		s.deliver(result)
-	}
-	return result
-}
-
-func (we *Environment) evaluate(key WatchKey) (Result, []sink, bool) {
-	input, ok := we.watches.input(key)
+func (we *Environment) reevaluate(key WatchKey) {
+	input, ctx, cancel, seq, ok := we.watches.supersede(we.lifecycle.Context(), key)
 	if !ok {
-		return Result{}, nil, false
+		return
 	}
-
-	result, invocations := we.evalForWatch(input)
-	subs, changed := we.watches.update(key, result, invocations)
-	return result, subs, changed
+	defer cancel()
+	result, invocations := we.evalForWatch(ctx, input)
+	if ctx.Err() != nil {
+		return
+	}
+	subs, changed := we.watches.update(key, seq, result, invocations)
+	if !changed {
+		return
+	}
+	we.watches.deliver(key, seq, result, subs)
 }
 
 func (we *Environment) runEviction() {

@@ -70,7 +70,7 @@ var evalCmd = &cobra.Command{
 			outputOpt = jpoet.DirectoryOutput(outputDirectory)
 		}
 
-		err = jpoet.Eval(
+		err = jpoet.Eval(cmd.Context(),
 			jpoet.WithPluginSet(plugins...),
 			inputOpt,
 			jpoet.Serialize(!str),

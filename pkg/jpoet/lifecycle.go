@@ -43,6 +43,10 @@ func (l *Lifecycle) Done() <-chan struct{} {
 	return l.ctx.Done()
 }
 
+func (l *Lifecycle) Context() context.Context {
+	return l.ctx
+}
+
 func (l *Lifecycle) Close() error {
 	var err error
 	l.closeOnce.Do(func() {

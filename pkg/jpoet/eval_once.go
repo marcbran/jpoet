@@ -1,6 +1,7 @@
 package jpoet
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -9,12 +10,12 @@ import (
 	"github.com/google/go-jsonnet/ast"
 )
 
-func Eval(opts ...Option) error {
+func Eval(ctx context.Context, opts ...Option) error {
 	c := newConfig()
 	for _, opt := range opts {
 		opt(c)
 	}
-	return c.eval()
+	return c.eval(ctx)
 }
 
 type Option func(*config)
@@ -34,7 +35,7 @@ func newConfig() *config {
 	}
 }
 
-func (c *config) eval() error {
+func (c *config) eval(ctx context.Context) error {
 	defer func() {
 		for _, closer := range c.closers {
 			err := closer.Close()
@@ -43,8 +44,7 @@ func (c *config) eval() error {
 			}
 		}
 	}()
-	vm, _ := c.build()
-	err := c.run(vm, c.invocations, c.paths)
+	err := c.run(ctx, c.buildVM(c.importer()))
 	if err != nil {
 		c.errs = append(c.errs, err)
 	}
@@ -135,8 +135,7 @@ func WithNativeFunction(f *jsonnet.NativeFunction) Option {
 func WithPlugin(p *Plugin) Option {
 	return func(c *config) {
 		c.closers = append(c.closers, p)
-		nf := p.recordingNativeFunction(c.invocations)
-		WithNativeFunction(nf)(c)
+		c.plugins = append(c.plugins, p)
 	}
 }
 

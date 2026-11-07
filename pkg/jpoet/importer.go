@@ -79,16 +79,13 @@ func (importer *FSImporter) tryPath(p string) (jsonnet.Contents, string, error) 
 	}
 
 	contentBytes, err := fs.ReadFile(importer.Fs, p)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return jsonnet.Contents{}, "", err
-		}
-		importer.cache.set(p, jsonnet.Contents{}, false)
+	if err != nil && !os.IsNotExist(err) {
+		return jsonnet.Contents{}, "", err
+	}
+	contents, exists := importer.cache.add(p, contentBytes, err == nil)
+	if !exists {
 		return jsonnet.Contents{}, "", nil
 	}
-
-	contents := jsonnet.MakeContentsRaw(contentBytes)
-	importer.cache.set(p, contents, true)
 	return contents, p, nil
 }
 
@@ -136,16 +133,13 @@ func (importer *FileImporter) tryPath(dir, importedPath string) (bool, jsonnet.C
 	}
 
 	contentBytes, err := os.ReadFile(absPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return false, jsonnet.Contents{}, "", err
-		}
-		importer.cache.set(absPath, jsonnet.Contents{}, false)
+	if err != nil && !os.IsNotExist(err) {
+		return false, jsonnet.Contents{}, "", err
+	}
+	contents, exists := importer.cache.add(absPath, contentBytes, err == nil)
+	if !exists {
 		return false, jsonnet.Contents{}, "", nil
 	}
-
-	contents := jsonnet.MakeContentsRaw(contentBytes)
-	importer.cache.set(absPath, contents, true)
 	return true, contents, absPath, nil
 }
 
@@ -173,13 +167,21 @@ func (c *importCache) get(path string) (jsonnet.Contents, bool, bool) {
 	return entry.contents, entry.exists, true
 }
 
-func (c *importCache) set(path string, contents jsonnet.Contents, exists bool) {
+func (c *importCache) add(path string, data []byte, exists bool) (jsonnet.Contents, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if entry, cached := c.entries[path]; cached {
+		return entry.contents, entry.exists
+	}
 	if c.entries == nil {
 		c.entries = make(map[string]*importCacheEntry)
 	}
+	var contents jsonnet.Contents
+	if exists {
+		contents = jsonnet.MakeContentsRaw(data)
+	}
 	c.entries[path] = &importCacheEntry{contents: contents, exists: exists}
+	return contents, exists
 }
 
 func (c *importCache) flush() {

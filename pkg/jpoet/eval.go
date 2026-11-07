@@ -2,6 +2,7 @@ package jpoet
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +15,7 @@ import (
 	"github.com/google/go-jsonnet/ast"
 )
 
-func (e *Environment) Eval(opts ...EvalOption) error {
+func (e *Environment) Eval(ctx context.Context, opts ...EvalOption) error {
 	if err := e.lifecycle.Enter(); err != nil {
 		return err
 	}
@@ -24,9 +25,18 @@ func (e *Environment) Eval(opts ...EvalOption) error {
 	for _, opt := range opts {
 		opt(&c)
 	}
-	e.vmMu.Lock()
-	defer e.vmMu.Unlock()
-	return c.run(e.vm, e.invocations, e.paths)
+	err := e.flushBarrier.Acquire(ctx, 1)
+	if err != nil {
+		return err
+	}
+	defer e.flushBarrier.Release(1)
+	v, err := e.pool.acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer e.pool.release(v)
+	v.refresh(e.generation)
+	return c.run(ctx, v)
 }
 
 type EvalOption func(*evalConfig)
@@ -58,18 +68,26 @@ func newEvalConfig() evalConfig {
 	}
 }
 
-func (c *evalConfig) run(vm *jsonnet.VM, invocations *invocationRecorder, paths *pathRecorder) error {
+func (c *evalConfig) run(ctx context.Context, v *pooledVM) error {
 	if !c.hasInput() {
 		return errors.New("missing input")
 	}
-	serializedJson, err := evaluateInput(vm, c.nodeInput, c.snippetInput, c.fileInput)
-	recordedInvocations := invocations.take()
-	if c.recordedInvocations != nil {
-		*c.recordedInvocations = recordedInvocations
+	err := ctx.Err()
+	if err != nil {
+		return err
 	}
-	recordedPaths := paths.take()
+	state := &evalState{ctx: ctx}
+	v.slot.state = state
+	serializedJson, err := evaluateInput(v.vm, c.nodeInput, c.snippetInput, c.fileInput)
+	v.slot.state = nil
+	if c.recordedInvocations != nil {
+		*c.recordedInvocations = state.invocations
+	}
 	if c.recordedPaths != nil {
-		*c.recordedPaths = recordedPaths
+		*c.recordedPaths = state.paths
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 	if err != nil {
 		return err
