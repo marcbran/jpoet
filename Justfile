@@ -1,42 +1,34 @@
-
-test-jsonnet:
-    #!/usr/bin/env bash
-    set -eu
-
-    jpoet test ./internal
-    jpoet test ./pkg
+tool := "go tool -modfile=tools/go.mod"
 
 test-go:
-    #!/usr/bin/env bash
-    set -eu
-
     go test -v -cover -timeout=120s -parallel=10 ./...
 
-test: test-jsonnet test-go
+test-race:
+    go test -v -race -timeout=120s ./...
 
-lint-go:
-    #!/usr/bin/env bash
-    set -eu
+test-jsonnet:
+    go run . test ./internal
+    go run . test ./pkg
 
-    golangci-lint run
+test: test-go test-jsonnet
 
-lint: lint-go
+test-e2e:
+    go test -v -race -tags e2e -timeout=300s ./tests/...
 
-build: test lint
-    #!/usr/bin/env bash
-    set -eu
+lint:
+    {{tool}} golangci-lint run ./...
 
+vuln:
+    {{tool}} govulncheck ./...
+
+build:
     mkdir -p dist
     go build -o ./dist -v ./...
 
 it: build
-    #!/usr/bin/env bash
-    set -eu
+    cd examples/build && just it
 
-    pushd ./examples/build && just it && popd
-
-install: build
-    #!/usr/bin/env bash
-    set -eu
-
+install:
     go install -v ./...
+
+ci: lint vuln test test-race build test-e2e
