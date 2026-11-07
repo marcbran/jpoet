@@ -25,9 +25,18 @@ func (e *Environment) Eval(ctx context.Context, opts ...EvalOption) error {
 	for _, opt := range opts {
 		opt(&c)
 	}
-	e.vmMu.Lock()
-	defer e.vmMu.Unlock()
-	return c.run(ctx, e.vm, e.invocations, e.paths, e.current)
+	err := e.flushBarrier.Acquire(ctx, 1)
+	if err != nil {
+		return err
+	}
+	defer e.flushBarrier.Release(1)
+	v, err := e.pool.acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer e.pool.release(v)
+	v.refresh(e.generation)
+	return c.run(ctx, v)
 }
 
 type EvalOption func(*evalConfig)
@@ -59,7 +68,7 @@ func newEvalConfig() evalConfig {
 	}
 }
 
-func (c *evalConfig) run(ctx context.Context, vm *jsonnet.VM, invocations *invocationRecorder, paths *pathRecorder, current *evalContext) error {
+func (c *evalConfig) run(ctx context.Context, v *pooledVM) error {
 	if !c.hasInput() {
 		return errors.New("missing input")
 	}
@@ -67,16 +76,15 @@ func (c *evalConfig) run(ctx context.Context, vm *jsonnet.VM, invocations *invoc
 	if err != nil {
 		return err
 	}
-	current.ctx = ctx
-	serializedJson, err := evaluateInput(vm, c.nodeInput, c.snippetInput, c.fileInput)
-	current.ctx = context.Background()
-	recordedInvocations := invocations.take()
+	state := &evalState{ctx: ctx}
+	v.slot.state = state
+	serializedJson, err := evaluateInput(v.vm, c.nodeInput, c.snippetInput, c.fileInput)
+	v.slot.state = nil
 	if c.recordedInvocations != nil {
-		*c.recordedInvocations = recordedInvocations
+		*c.recordedInvocations = state.invocations
 	}
-	recordedPaths := paths.take()
 	if c.recordedPaths != nil {
-		*c.recordedPaths = recordedPaths
+		*c.recordedPaths = state.paths
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()

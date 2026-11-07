@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -13,6 +14,12 @@ type watchEntry struct {
 
 	lastIdentity    string
 	hasLastIdentity bool
+
+	started uint64
+	cancel  context.CancelFunc
+
+	deliverMu sync.Mutex
+	delivered uint64
 }
 
 type watchRegistry struct {
@@ -25,38 +32,76 @@ func newWatchRegistry(invocations *invocationRegistry) *watchRegistry {
 	return &watchRegistry{entries: map[WatchKey]*watchEntry{}, invocations: invocations}
 }
 
-func (r *watchRegistry) input(key WatchKey) (watchConfig, bool) {
+func (r *watchRegistry) ensure(key WatchKey, input watchConfig, s sink) (watchConfig, uint64, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	entry, ok := r.entries[key]
 	if !ok {
-		return watchConfig{}, false
-	}
-	return entry.input, true
-}
-
-func (r *watchRegistry) ensure(key WatchKey, input watchConfig, s sink) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	entry, ok := r.entries[key]
-	if !ok {
-		r.entries[key] = &watchEntry{
+		entry = &watchEntry{
 			input:       input,
-			subscribers: map[sink]struct{}{s: {}},
+			subscribers: map[sink]struct{}{},
 		}
-		return
+		r.entries[key] = entry
 	}
-	if len(entry.subscribers) == 0 {
+	first := len(entry.subscribers) == 0
+	if first {
 		entry.invocations = nil
+		entry.started++
 	}
 	entry.subscribers[s] = struct{}{}
 	entry.idleSince = time.Time{}
+	return entry.input, entry.started, first
 }
 
-func (r *watchRegistry) update(key WatchKey, result Result, invocations []pluginInvocation) (subs []sink, changed bool) {
+func (r *watchRegistry) supersede(parent context.Context, key WatchKey) (watchConfig, context.Context, context.CancelFunc, uint64, bool) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	entry, ok := r.entries[key]
 	if !ok {
+		return watchConfig{}, nil, nil, 0, false
+	}
+	if entry.cancel != nil {
+		entry.cancel()
+	}
+	ctx, cancel := context.WithCancel(parent)
+	entry.cancel = cancel
+	entry.started++
+	return entry.input, ctx, cancel, entry.started, true
+}
+
+func (r *watchRegistry) cancelRunning() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, entry := range r.entries {
+		if entry.cancel != nil {
+			entry.cancel()
+			entry.cancel = nil
+		}
+	}
+}
+
+func (r *watchRegistry) deliver(key WatchKey, seq uint64, result Result, subs []sink) {
+	r.mu.Lock()
+	entry, ok := r.entries[key]
+	r.mu.Unlock()
+	if !ok {
+		return
+	}
+	entry.deliverMu.Lock()
+	defer entry.deliverMu.Unlock()
+	if seq < entry.delivered {
+		return
+	}
+	entry.delivered = seq
+	for _, s := range subs {
+		s.deliver(result)
+	}
+}
+
+func (r *watchRegistry) update(key WatchKey, seq uint64, result Result, invocations []pluginInvocation) (subs []sink, changed bool) {
+	r.mu.Lock()
+	entry, ok := r.entries[key]
+	if !ok || entry.started != seq {
 		r.mu.Unlock()
 		return nil, false
 	}
@@ -107,6 +152,10 @@ func (r *watchRegistry) detach(key WatchKey, s sink) {
 	if len(entry.subscribers) == 0 {
 		entry.idleSince = time.Now()
 		deactivated = entry.invocations
+		if entry.cancel != nil {
+			entry.cancel()
+			entry.cancel = nil
+		}
 	}
 	r.mu.Unlock()
 
