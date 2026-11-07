@@ -50,12 +50,19 @@ type Option func(*config)
 
 type config struct {
 	plugins []*jpoet.Plugin
+	jpaths  []string
 }
 
 // WithPlugins registers plugins so tests can call them through std.native.
 func WithPlugins(plugins ...*jpoet.Plugin) Option {
 	return func(c *config) {
 		c.plugins = append(c.plugins, plugins...)
+	}
+}
+
+func WithJPaths(jpaths ...string) Option {
+	return func(c *config) {
+		c.jpaths = append(c.jpaths, jpaths...)
 	}
 }
 
@@ -104,7 +111,7 @@ func RunFile(filename string, opts ...Option) (*Run, error) {
 	vm.Importer(jpoet.CompoundImporter{
 		Importers: []jsonnet.Importer{
 			&jpoet.FSImporter{Fs: lib},
-			&jpoet.FileImporter{},
+			&jpoet.FileImporter{JPaths: c.jpaths},
 		},
 	})
 	res, err := vm.EvaluateAnonymousSnippet("main.jsonnet", fmt.Sprintf(`

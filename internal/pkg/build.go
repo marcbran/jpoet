@@ -16,7 +16,7 @@ import (
 	"github.com/marcbran/jpoet/internal/pkg/lib/imports"
 )
 
-func Build(ctx context.Context, pkgDir, buildDir string) error {
+func Build(ctx context.Context, pkgDir, buildDir string, jpaths []string) error {
 	mainFile := filepath.Join(pkgDir, "main.libsonnet")
 	_, err := os.Stat(mainFile)
 	if err != nil {
@@ -30,12 +30,12 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 	if err != nil {
 		return err
 	}
-	external := make(map[string]bool, len(cfg.External))
+	in := inliner{external: make(map[string]bool, len(cfg.External)), jpaths: jpaths}
 	for _, imp := range cfg.External {
-		external[imp] = true
+		in.external[imp] = true
 	}
 
-	inlinedMainCode, err := inlineFile(mainFile, external)
+	inlinedMainCode, err := in.inlineFile(mainFile)
 	if err != nil {
 		return err
 	}
@@ -91,8 +91,13 @@ func Build(ctx context.Context, pkgDir, buildDir string) error {
 	return nil
 }
 
-func inlineFile(input string, external map[string]bool) (string, error) {
-	node, finalFodder, err := readInlineNode(input, external)
+type inliner struct {
+	external map[string]bool
+	jpaths   []string
+}
+
+func (in inliner) inlineFile(input string) (string, error) {
+	node, finalFodder, err := in.readInlineNode(input)
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +108,7 @@ func inlineFile(input string, external map[string]bool) (string, error) {
 	return format, nil
 }
 
-func readInlineNode(filename string, external map[string]bool) (ast.Node, ast.Fodder, error) {
+func (in inliner) readInlineNode(filename string) (ast.Node, ast.Fodder, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, nil, err
@@ -112,30 +117,30 @@ func readInlineNode(filename string, external map[string]bool) (ast.Node, ast.Fo
 	if err != nil {
 		return nil, nil, err
 	}
-	err = inlineNode(node, filename, external)
+	err = in.inlineNode(node, filename)
 	if err != nil {
 		return nil, nil, err
 	}
 	return node, finalFodder, nil
 }
 
-func inlineNode(node ast.Node, filename string, external map[string]bool) error {
+func (in inliner) inlineNode(node ast.Node, filename string) error {
 	switch n := node.(type) {
 	case *ast.Local:
 		for i := range n.Binds {
-			resolved, err := inlineValue(n.Binds[i].Body, filename, external)
+			resolved, err := in.inlineValue(n.Binds[i].Body, filename)
 			if err != nil {
 				return err
 			}
 			n.Binds[i].Body = resolved
 		}
-		return inlineNode(n.Body, filename, external)
+		return in.inlineNode(n.Body, filename)
 	case *ast.Object:
 		for i := range n.Fields {
 			if n.Fields[i].Expr2 == nil {
 				continue
 			}
-			resolved, err := inlineValue(n.Fields[i].Expr2, filename, external)
+			resolved, err := in.inlineValue(n.Fields[i].Expr2, filename)
 			if err != nil {
 				return err
 			}
@@ -145,26 +150,26 @@ func inlineNode(node ast.Node, filename string, external map[string]bool) error 
 	return nil
 }
 
-func inlineValue(node ast.Node, filename string, external map[string]bool) (ast.Node, error) {
+func (in inliner) inlineValue(node ast.Node, filename string) (ast.Node, error) {
 	switch imp := node.(type) {
 	case *ast.Import:
-		return inlineImport(imp, filename, external)
+		return in.inlineImport(imp, filename)
 	case *ast.ImportStr:
-		return inlineImportStr(imp, filename, external)
+		return in.inlineImportStr(imp, filename)
 	default:
 		return node, nil
 	}
 }
 
-func inlineImport(imp *ast.Import, filename string, external map[string]bool) (ast.Node, error) {
-	if external[imp.File.Value] {
+func (in inliner) inlineImport(imp *ast.Import, filename string) (ast.Node, error) {
+	if in.external[imp.File.Value] {
 		return imp, nil
 	}
-	impFilename, err := importFilename(imp.File.Value, filename)
+	impFilename, err := in.importFilename(imp.File.Value, filename)
 	if err != nil {
 		return nil, err
 	}
-	impNode, _, err := readInlineNode(impFilename, external)
+	impNode, _, err := in.readInlineNode(impFilename)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +181,11 @@ func inlineImport(imp *ast.Import, filename string, external map[string]bool) (a
 	return impNode, nil
 }
 
-func inlineImportStr(imp *ast.ImportStr, filename string, external map[string]bool) (ast.Node, error) {
-	if external[imp.File.Value] {
+func (in inliner) inlineImportStr(imp *ast.ImportStr, filename string) (ast.Node, error) {
+	if in.external[imp.File.Value] {
 		return imp, nil
 	}
-	impFilename, err := importFilename(imp.File.Value, filename)
+	impFilename, err := in.importFilename(imp.File.Value, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +205,22 @@ func inlineImportStr(imp *ast.ImportStr, filename string, external map[string]bo
 	return lit, nil
 }
 
-func importFilename(file, filename string) (string, error) {
-	return filepath.Abs(filepath.Join(filepath.Dir(filename), file))
+func (in inliner) importFilename(file, filename string) (string, error) {
+	local, err := filepath.Abs(filepath.Join(filepath.Dir(filename), file))
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(local); err == nil {
+		return local, nil
+	}
+	for i := len(in.jpaths) - 1; i >= 0; i-- {
+		candidate, err := filepath.Abs(filepath.Join(in.jpaths[i], file))
+		if err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return local, nil
 }
