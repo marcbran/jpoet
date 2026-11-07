@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/marcbran/jpoet/compare/v0.28.0...v0.29.0) (2026-11-07)
+
+
+### Features
+
+* context and concurrency ([#180](https://github.com/marcbran/jpoet/issues/180)) ([2c3f826](https://github.com/marcbran/jpoet/commit/2c3f826937099554d1f8ddeab01c9f5cce1e556b))
+
 ## [0.28.0](https://github.com/marcbran/jpoet/compare/v0.27.0...v0.28.0) (2026-11-05)
 
 
